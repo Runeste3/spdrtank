@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cvbot"
+version = "3.1.0"
+authors = [
+	{ name = "Hisham Moe", email="runeste2018@gmail.com" },
+]
+description = "Visual based desktop automation toolbox. Supports mouse & keyboard control"
+readme = "README.rst"
+requires-python = ">=3.9"

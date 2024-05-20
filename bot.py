@@ -1,4 +1,5 @@
 from math import dist
+from socket import MsgFlag
 from time import sleep, time
 from cvbot.capture import get_region
 from cvbot.keyboard import listener, combo_press, kbd, press
@@ -6,6 +7,7 @@ from cvbot.mouse import click, ms, msbtn, move
 from threading import Thread, Timer
 from random import randrange, uniform
 from collections import deque
+from datetime import datetime
 import detect
 # Testing
 import cv2 as cv
@@ -16,6 +18,7 @@ DQSZ = 20
 mv_far = False
 boton = True
 running = True
+gmsg = ""
 cmptv = False
 img = None
 hp, energy = 0, 0 
@@ -25,12 +28,31 @@ loals = []
 loenm = []
 loob = []
 laht = None
+gmp_to_gmn = {
+    "":"Unknown",
+    "SAHA":"Safe Haven",
+    "JUTE":"Jungle Temple",
+    "DRCA":"Dragon Cave",
+    "ARBA":"Arctic Base",
+    "DECA":"Death Canyon",
+    "FRRE":"Frozen Research",
+    "SHSH":"Shrouded Shrine",
+    "VAVA":"Vault of Value",
+    "STST":"Steaming Stronghold",
+    "FOCI":"Forsaken City"
+}
+
 gmode_to_smode = {
     1:"Team Deathmatch",
     2:"Poultry Pusher",
     3:"Chicken Chaser",
     4:"King of the hill"
 }
+
+def log(m):
+    global gmsg
+    gmsg = "[{}] {}...".format(datetime.now().strftime("%M:%S"), 
+                               m)
 
 def release_all():
     kbd.release("a")
@@ -188,6 +210,7 @@ def move_toward(pos):
     except Exception as e:
         print(traceback.format_exc())
         vect = (0, 0)
+
     vec_to_move(vect)
 
 def mvto_nrst(target):
@@ -198,6 +221,7 @@ def mvto_nrst(target):
     """
     global loals, loenm
     nobj = nearest_ally() if target == "ally" else nearest_enm()
+    log("Moving toward {}".format(target))
     move_toward(nobj)
     return nobj
 
@@ -210,6 +234,7 @@ def mvto_frst(target):
     global loals, loenm
     nobj = farthest_ally() if target == "ally" else farthest_enm()
     if not (nobj is None):
+        log("Moving toward {}".format(target))
         move_toward(nobj)
     return nobj
 
@@ -237,6 +262,7 @@ def random_move():
     None -> None
     Do a random movement to avoid enemy attacks
     """
+    log("Moving randomly")
     vec_to_move((randrange(-10, 10), randrange(-10, 10)))
     
 def tdm_move():
@@ -253,7 +279,7 @@ def tdm_move():
     #    vec_to_move(vect)
     #    sleep(2)
     if atkmode == 1:
-        if loals:
+        if len(loals) > 0:
             if mv_far:
                 mvto_frst("ally")
             else:
@@ -262,6 +288,7 @@ def tdm_move():
             loai = detect.aly_inds(img)
             if loai:
                 naly = loai[0]
+                log("Moving toward ally arrow")
                 move_toward(naly)
             elif loenm:
                 random_move()
@@ -278,6 +305,7 @@ def tdm_move():
             loai = detect.aly_inds(img)
             if loai:
                 naly = loai[0]
+                log("Moving toward ally arrow")
                 move_toward(naly)
 
 def basic_move():
@@ -295,6 +323,7 @@ def basic_move():
         loai = detect.aly_inds(img)
         if loai:
             naly = loai[0]
+            log("Moving toward ally arrow")
             move_toward(naly)
         elif loenm:
             random_move()
@@ -311,6 +340,7 @@ def pltry_move():
         basic_move()
     else:
         if dist(cpos, slfloc) > detect.recal(100):
+            log("Moving to the poultry")
             move_toward(cpos)
         else:
             release_all()
@@ -327,6 +357,7 @@ def chkchs_move():
         lobrl.sort(key=lambda brl: dist(brl, slfloc))
         brl = lobrl[0][0], int(lobrl[0][1] + detect.recal(70))
         if dist(brl, slfloc) > detect.recal(100):
+            log("Unloading collected chicks")
             move_toward(brl)
         else:
             release_all()
@@ -335,6 +366,7 @@ def chkchs_move():
         if lochk:
             lochk.sort(key=lambda chk: dist(chk, slfloc))
             chk = lochk[0]
+            log("Collecting chicks")
             move_toward(chk)
         else:
             basic_move()
@@ -348,6 +380,7 @@ def koh_move():
 
     hill = detect.hill(img)
     if not (hill is None):
+        log("Moving to the hill")
         move_toward(hill)
     else:
         basic_move()
@@ -571,7 +604,9 @@ def mode_detective():
         while running and boton:
             if not (img is None):
                 gmode = detect.game_mode(img)
-            sleep(5)
+                sleep(2)
+                detect.recognize_map(img)
+            sleep(3)
         sleep(1)
 
 def run():
@@ -580,7 +615,7 @@ def run():
     Main bot loop
     """
     global boton, slfloc, img, loals, loenm, hp, energy
-    global running, atkmode, gmode, gmode_to_smode
+    global running, atkmode, gmode, gmode_to_smode, gmsg
 
     Thread(target=attacking).start()
     Thread(target=moving).start()
@@ -606,14 +641,16 @@ def run():
                         else 1)
 
             if running:
-                print("HP:", hp, "Energy:", energy, 
+                print(gmsg,
                       "|",
-                      "Weapon:", 
+                      "HP:", hp, "ENR:", energy, 
+                      "|",
                       detect.Weapon.tp_to_name(detect.weapon.type),
                       "|",
-                      "Mode:",
                       gmode_to_smode[gmode],
-                      "   ", end="\r")
+                      "|",
+                      gmp_to_gmn[detect.cur_map],
+                      " " * 10, end="\r")
         sleep(1)
 
 if __name__ == "__main__":
@@ -655,4 +692,5 @@ if __name__ == "__main__":
         listener("pause/run", "p", pause_run)
         listener("competitive", "m", sr_cmptv)
 
+        print("")
         run()

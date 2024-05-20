@@ -922,7 +922,7 @@ def lf_detail(lfmap):
     """
     global cur_map
 
-    if cur_map == "dc":
+    if cur_map == "DECA":
         lfmap = lf_detail_dc(lfmap)
 
     return lfmap
@@ -1022,7 +1022,7 @@ def detail(vmap):
     """
     global cur_map
 
-    if cur_map == "dc":
+    if cur_map == "DECA":
         return detail_dc(vmap)
     
     return vmap
@@ -1122,6 +1122,46 @@ lpt = time()
 loob = [] 
 cur_map = "" 
 
+def process_mn(img):
+    """
+    Image -> Image
+    Crop the given image
+    to where game map name appears
+    """
+    w, h = img.size
+    ny2 =  round(h * 0.2)
+    nx1 =  round(w * 0.25)
+    nx2 = -round(w * 0.25)
+    return Image(img.img[:ny2, nx1:nx2])
+
+LOMN = {
+    "SAFE HAVEN",
+    "JUNGLE TEMPLE",
+    "DRAGON CAVE",
+    "ARCTIC BASE",
+    "DEATH CANYON",
+    "FROZEN RESEARCH",
+    "SHROUDED SHRINE",
+    "VAULT OF VALUE",
+    "STEAMING STRONGHOLD",
+    "FORSAKEN CITY"
+}
+
+
+def mn_to_mp(gmn):
+    """
+    str -> str[2]
+    Return the map phrase if the
+    given string is a map name
+    """
+    for mn in LOMN:
+        smr = fuzz.ratio(mn, gmn)
+        if smr > 90:
+            mnp = mn.split(" ")
+            return "{}{}".format(mnp[0][:2], mnp[1][:2])
+
+    return cur_map 
+
 def recognize_map(img):
     """
     Image -> str
@@ -1129,9 +1169,12 @@ def recognize_map(img):
     and return its string code or return empty
     string if not known
     """
-    global cur_map
-    cur_map = "dc"
-    return cur_map
+    mnim = process_mn(img) 
+    result = read(mnim, " ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    if " ON " in result:
+        result = result.split(" ON ")[-1]
+        global cur_map
+        cur_map = mn_to_mp(result)
 
 def map_objs(img):
     """
@@ -1140,7 +1183,7 @@ def map_objs(img):
     """
     global cur_map
 
-    if cur_map == "dc":
+    if cur_map == "DECA":
         return dsr_model.detect(img, 0.5)
     else:
         return []
@@ -1426,9 +1469,8 @@ def direction(img, sp, ep):
     serving as a pathing solution
     Return one of the 8 possible move directions (left-right, up-down)
     """
-    global loob, lpt, cur_map
+    global loob, lpt
 
-    recognize_map(img)
     loob = map_objs(img) 
 
     vmap = make_vmap(img)
@@ -1617,6 +1659,10 @@ if __name__ == "__main__":
     #win.repos(0, 0)
     #new_win(win.size)
     #reg = 0, 0, win.size[0], win.size[1]
+    init_ocr(['en'])
+    img = read_img("test.png")
+    recognize_map(img)
+    quit()
     if argv[1] == "test":
         while True:
             img = read_img("test.png")
