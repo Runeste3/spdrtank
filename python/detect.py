@@ -18,7 +18,7 @@ from os import listdir
 # - Stuck inside building bug
 # - Going back and forth bug
 #----------------------------------
-
+print("\n Initiating Neural Nets... \n")
 chk_model = Model("src/models/chick.onnx", ["chick",])
 dsr_model = Model("src/models/desert2.onnx", ["House-1",
                                               "House-2",
@@ -1173,6 +1173,12 @@ def recognize_map(img):
     result = read(mnim, " ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     if " ON " in result:
         result = result.split(" ON ")[-1]
+    elif " OM " in result:
+        result = result.split(" OM ")[-1]
+    else:
+        result = ""
+    
+    if result != "":
         global cur_map
         cur_map = mn_to_mp(result)
 
