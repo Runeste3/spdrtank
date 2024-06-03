@@ -1,4 +1,3 @@
-from mimetypes import init
 from os import read
 from time import time
 from random import choice
@@ -13,34 +12,10 @@ from thefuzz import fuzz
 from math import prod, dist, atan, pi
 from os import listdir
 
-#----------TODO--------------------
-# FIX PATHING BUGS:
-# - Stuck inside building bug
-# - Going back and forth bug
 #----------------------------------
 print("\n Initiating Neural Nets... \n")
 chk_model = Model("src/models/chick.onnx", ["chick",])
-dsr_model = Model("src/models/desert2.onnx", ["House-1",
-                                              "House-2",
-                                              "House-3",
-                                              "House-4",
-                                              "Bridge-1",
-                                              "Bridge-2",
-                                              "Obstacle-1",
-                                              "Obstacle-2",
-                                              "Obstacle-3",
-                                              "House-5",
-                                              "Bridge-3",
-                                              "House-6",
-                                              "House-7",
-                                              "House-8",
-                                              "House-9",
-                                              "House-10",
-                                              "Obstacle-4",
-                                              "Obstacle-5",
-                                              "Obstacle-6",
-                                              "Obstacle-7",
-                                              "Obstacle-8"])
+map_model = None
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -777,7 +752,7 @@ def __record(reg):
 
     while True:
         img = get_region(reg)
-        save_img(img, "_pathing/{}.png".format(i))
+        save_img(img, "_test/_pathing/Vault/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -792,9 +767,9 @@ def size_check(box, wh):
 MNX, MNY = 20, 45
 MXX, MXY = rltv_szu[0] - 5, rltv_szu[1] - 5
 
-def cut_tri(loc, vmap, box, szt, igm=False):
+def cut_tri(loc, vmap, box, szt, igm=False, flipx=False, flipy=False):
     """
-    str, bi np im, box, tuple(int, int) -> bi np im
+    str, bi np im, box, tuple(int, int), bool, bool -> bi np im
     Remove a triangle from either:
     - top-left
     - top-right
@@ -806,31 +781,36 @@ def cut_tri(loc, vmap, box, szt, igm=False):
     szx, szy = szt
 
     x1, y1, x2, y2 = box
+    bw, bh = x2 - x1, y2 - y1
+    if szx > bw:
+        szx = bw
+    if szy > bh:
+        szy = bh
 
     if loc == "tl":
         if not igm and (x1 <= MNX or y1 <= MNY):
             return vmap
         p1 = (x1, y1)
-        p2 = (x1 + szx, y1)
-        p3 = (x1, y1 + szy)
+        p2 = (x1 + szx, y1 if not flipy else y1 + szy)
+        p3 = (x1 if not flipx else x1 + szx, y1 + szy)
     elif loc == "tr":
         if not igm and (x2 >= MXX or y1 <= MNY):
             return vmap
         p1 = (x2, y1)
-        p2 = (x2 - szx, y1)
-        p3 = (x2, y1 + szy)
+        p2 = (x2 - szx, y1 if not flipy else y1 + szy)
+        p3 = (x2 if not flipx else x2 - szx, y1 + szy)
     elif loc == "bl":
         if not igm and (x1 < MNX or y2 > MXY):
             return vmap
         p1 = (x1, y2)
-        p2 = (x1 + szx, y2)
-        p3 = (x1, y2 - szy)
+        p2 = (x1 + szx, y2 if not flipy else y2 - szy)
+        p3 = (x1 if not flipx else x1 + szx, y2 - szy)
     elif loc == "br":
         if not igm and (x2 >= MXX or y2 >= MXY):
             return vmap
         p1 = (x2, y2)
-        p2 = (x2 - szx, y2)
-        p3 = (x2, y2 - szy)
+        p2 = (x2 - szx, y2 if not flipy else y2 - szy)
+        p3 = (x2 if not flipx else x2 - szx, y2 - szy)
     else:
         return vmap
 
@@ -850,6 +830,67 @@ def open_fire_line(sp, ep):
     lfmap = make_lfmap()
     lfm = cv.line(np.zeros_like(lfmap), sp, ep, 1)
     return not (255 in lfmap[lfm==1])
+
+def lf_detail_vault(vmap):
+    """
+    bi np im -> bi np im
+    Details for Vault Of Value
+    line of fire map
+    """
+    global loob
+
+    h, w = vmap.shape[:2]
+
+    for ((x1, y1, x2, y2), _, name) in loob:
+        if "Wall" in name:
+            # Pre-efects
+            # WALLS
+            if name == "Wall-2":
+                y2 += 50
+                if y2 > h:
+                    y2 = h
+            elif name == "Wall-4":
+                y1 += 50
+                if y1 > h:
+                    y1 -= 50 
+
+            # Object Blocks
+            vmap[y1:y2, x1:x2] = 255
+            box = x1, y1, x2, y2
+
+            # After-efects
+            # WALLS
+            if   name == "Wall-1":
+                vmap = cut_tri("br", vmap, box, (100, 100), igm=True)
+            elif name == "Wall-4":
+                vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
+                vmap = cut_tri("br", vmap, box, (200, 380), igm=True, flipy=True)
+                vmap = cut_tri("tr", vmap, box, (250, 600), igm=True, flipy=True)
+            elif name == "Wall-6":
+                vmap = cut_tri("bl", vmap, box, (200, 300), igm=True)
+                vmap = cut_tri("tr", vmap, box, (100, 100), igm=True)
+            elif name == "Wall-7":
+                vmap = cut_tri("br", vmap, box, (270, 250), igm=True, flipx=True)
+                vmap = cut_tri("br", vmap, box, (500, 200), igm=True, flipx=True)
+                vmap = cut_tri("bl", vmap, box, (250, 200), igm=True)
+                vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
+                vmap = cut_tri("tl", vmap, box, (150, 150), igm=True)
+            elif name == "Wall-9":
+                vmap = cut_tri("tl", vmap, box, (150, 400), igm=True, flipy=True)
+                vmap = cut_tri("tl", vmap, box, (150, 350), igm=True)
+                vmap = cut_tri("tr", vmap, box, ( 50,  50), igm=True)
+                vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
+            elif name == "Wall-12":
+                vmap = cut_tri("tl", vmap, box, (200, 200), igm=True)
+            elif name == "Wall-15":
+                vmap = cut_tri("bl", vmap, box, (100, 100), igm=True)
+                vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
+                vmap = cut_tri("tr", vmap, box, (400, 150), igm=True, flipx=True)
+                vmap = cut_tri("tr", vmap, box, (450, 150))
+            elif name == "Wall-17":
+                vmap = cut_tri("tr", vmap, box, (150, 200), igm=True)
+
+    return vmap
 
 def lf_detail_dc(lfmap):
     """
@@ -924,6 +965,8 @@ def lf_detail(lfmap):
 
     if cur_map == "DECA":
         lfmap = lf_detail_dc(lfmap)
+    elif cur_map == "VAVA":
+        lfmap = lf_detail_vault(lfmap)
 
     return lfmap
 
@@ -938,6 +981,114 @@ def make_lfmap():
     lfmap = np.zeros((rltv_szu[1] + 39, rltv_szu[0] + 16), dtype=np.uint8)
     return lf_detail(lfmap)
 
+def detail_vault(vmap):
+    """
+    bi np im -> bi np im
+    Details for Vault Of Value map
+    """
+    global loob
+
+    h, w = vmap.shape[:2]
+
+    for ((x1, y1, x2, y2), _, name) in loob:
+        # Pre-efects
+        # WALLS
+        if name == "Wall-2":
+            y2 += 50
+            if y2 > h:
+                y2 = h
+        elif name == "Wall-4":
+            y1 += 50
+            if y1 > h:
+                y1 -= 50 
+        # PITS
+        if name == "Pit-1":
+            x2 += 100
+            if x2 > w:
+                x2 = w
+        elif name in ("Pit-2", "Pit-3"):
+            y1 = 0
+        elif name == "Pit-4":
+            y2 += 100
+            if y2 > h:
+                y2 = h
+        elif name == "Pit-6":
+            y2 = h
+        elif name == "Pit-7":
+            y1 -= 20
+            if y1 < 0:
+                y1 = 0
+        elif name == "Pit-8":
+            x1 = 0
+
+        # Object Blocks
+        vmap[y1:y2, x1:x2] = 255
+        box = x1, y1, x2, y2
+
+        # After-efects
+        # WALLS
+        if   name == "Wall-1":
+            vmap = cut_tri("br", vmap, box, (100, 100), igm=True)
+        elif name == "Wall-4":
+            vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
+            vmap = cut_tri("br", vmap, box, (200, 380), igm=True, flipy=True)
+            vmap = cut_tri("tr", vmap, box, (250, 600), igm=True, flipy=True)
+        elif name == "Wall-6":
+            vmap = cut_tri("bl", vmap, box, (200, 300), igm=True)
+            vmap = cut_tri("tr", vmap, box, (100, 100), igm=True)
+        elif name == "Wall-7":
+            vmap = cut_tri("br", vmap, box, (270, 250), igm=True, flipx=True)
+            vmap = cut_tri("br", vmap, box, (500, 200), igm=True, flipx=True)
+            vmap = cut_tri("bl", vmap, box, (250, 200), igm=True)
+            vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
+            vmap = cut_tri("tl", vmap, box, (150, 150), igm=True)
+        elif name == "Wall-9":
+            vmap = cut_tri("tl", vmap, box, (150, 400), igm=True, flipy=True)
+            vmap = cut_tri("tl", vmap, box, (150, 350), igm=True)
+            vmap = cut_tri("tr", vmap, box, ( 50,  50), igm=True)
+            vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
+        elif name == "Wall-12":
+            vmap = cut_tri("tl", vmap, box, (200, 200), igm=True)
+        elif name == "Wall-15":
+            vmap = cut_tri("bl", vmap, box, (100, 100), igm=True)
+            vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
+            vmap = cut_tri("tr", vmap, box, (400, 150), igm=True, flipx=True)
+            vmap = cut_tri("tr", vmap, box, (450, 150))
+        elif name == "Wall-17":
+            vmap = cut_tri("tr", vmap, box, (150, 200), igm=True)
+
+        # PITS
+        elif name == "Pit-1":
+            vmap = cut_tri("tl", vmap, box, (200, 150), igm=True)
+            vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
+            vmap = cut_tri("bl", vmap, box, (500, 20) , igm=True, flipx=True)
+        elif name == "Pit-2":
+            vmap = cut_tri("br", vmap, box, (50, 300) , igm=True, flipy=True)
+            vmap = cut_tri("bl", vmap, box, (50, 300) , igm=True)
+        elif name == "Pit-3":
+            vmap = cut_tri("bl", vmap, box, (50, 300) , igm=True, flipy=True) 
+            vmap = cut_tri("br", vmap, box, (300, 50) , igm=True) 
+        elif name == "Pit-4":
+            vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
+            vmap = cut_tri("tl", vmap, box, (50, 500) , igm=True)
+        elif name == "Pit-5":
+            vmap = cut_tri("tr", vmap, box, (50, 500) , igm=True)
+            vmap = cut_tri("br", vmap, box, (150, 150), igm=True)
+            vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
+        elif name == "Pit-6":
+            vmap = cut_tri("tr", vmap, box, (250, 100), igm=True)
+            vmap = cut_tri("tl", vmap, box, (50, 250) , igm=True)
+        elif name == "Pit-7":
+            vmap = cut_tri("tl", vmap, box, (100, 100), igm=True)
+            vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
+            vmap = cut_tri("br", vmap, box, (100, 400), igm=True, flipy=True)
+            vmap = cut_tri("tr", vmap, box, (100, 300), igm=True, flipy=True)
+        elif name == "Pit-8":
+            vmap = cut_tri("tr", vmap, box, (300, 50) , igm=True)
+            vmap = cut_tri("br", vmap, box, (100, 300), igm=True)
+    
+    return vmap
+
 def detail_dc(vmap):
     """
     bi np im -> bi np im
@@ -950,7 +1101,6 @@ def detail_dc(vmap):
     for ((x1, y1, x2, y2), _, name) in loob:
         if "House" in name or "Obstacle" in name:
             # Pre-efects
-
             vmap[y1:y2, x1:x2] = 255
 
             # After-efects
@@ -994,6 +1144,8 @@ def detail_dc(vmap):
                 vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (300, 200))
 
         elif "Bridge" in name:
+            if name == "Bridge-3":
+                x2 += 100
             lobyr.append((y1, y2))
             if bsx is None:
                 bsx = x1
@@ -1024,6 +1176,8 @@ def detail(vmap):
 
     if cur_map == "DECA":
         return detail_dc(vmap)
+    elif cur_map == "VAVA":
+        return detail_vault(vmap)
     
     return vmap
 
@@ -1033,11 +1187,8 @@ def make_vmap(img):
     Setup a black and white map where blocking
     objects are white and other objects are black
     """
-    global rltv_szu
-
-    vmap = np.zeros((rltv_szu[1] + 39, rltv_szu[0] + 16), dtype=np.uint8)
-    #edgim = cv.Canny(img.img, 100, 200)
-    return detail(vmap)#, edgim)
+    vmap = np.zeros(img.size[::-1], dtype=np.uint8)
+    return detail(vmap)
 
 def make_vpoints(sp):
     """
@@ -1158,7 +1309,8 @@ def mn_to_mp(gmn):
         smr = fuzz.ratio(mn, gmn)
         if smr > 90:
             mnp = mn.split(" ")
-            return "{}{}".format(mnp[0][:2], mnp[1][:2])
+            if len(mnp) >= 2 and (len(mnp[0]) > 2 and len(mnp[1])):
+                return "{}{}".format(mnp[0][:2], mnp[-1][:2])
 
     return cur_map 
 
@@ -1180,19 +1332,82 @@ def recognize_map(img):
     
     if result != "":
         global cur_map
-        cur_map = mn_to_mp(result)
+        prsd_map = mn_to_mp(result)
+        if cur_map != prsd_map:
+            print("\n Loading map model... \n")
+            load_map_model(prsd_map)
+        cur_map = prsd_map
 
+def load_map_model(pm):
+    """
+    Map Code -> None
+    Load the map objects detection model
+    for the current map
+    """
+    global map_model
+
+    if pm == "DECA":
+        map_model = Model("src/models/desert2.onnx", ["House-1",
+                                            "House-2",
+                                            "House-3",
+                                            "House-4",
+                                            "Bridge-1",
+                                            "Bridge-2",
+                                            "Obstacle-1",
+                                            "Obstacle-2",
+                                            "Obstacle-3",
+                                            "House-5",
+                                            "Bridge-3",
+                                            "House-6",
+                                            "House-7",
+                                            "House-8",
+                                            "House-9",
+                                            "House-10",
+                                            "Obstacle-4",
+                                            "Obstacle-5",
+                                            "Obstacle-6",
+                                            "Obstacle-7",
+                                            "Obstacle-8"])
+    elif pm == "VAVA":
+        map_model = Model("src/models/vault.onnx", ["Wall-1",
+                                                    "Wall-2",
+                                                    "Wall-3",
+                                                    "Wall-4",
+                                                    "Pit-1",
+                                                    "Pit-2",
+                                                    "Wall-5",
+                                                    "Pit-3",
+                                                    "Wall-6",
+                                                    "Wall-7",
+                                                    "Pit-4",
+                                                    "Wall-8",
+                                                    "Wall-9",
+                                                    "Wall-10",
+                                                    "Wall-11",
+                                                    "Pit-5",
+                                                    "Wall-12",
+                                                    "Wall-13",
+                                                    "Pit-6",
+                                                    "Pit-7",
+                                                    "Wall-14",
+                                                    "Wall-15",
+                                                    "Wall-16",
+                                                    "Wall-17",
+                                                    "Wall-18",
+                                                    "Pit-8",
+                                                    "Wall-19",
+                                                    ])
 def map_objs(img):
     """
     Image -> list(box, str, float)
     Return objects in the given map image 
     """
-    global cur_map
+    global map_model
 
-    if cur_map == "DECA":
-        return dsr_model.detect(img, 0.5)
-    else:
+    if map_model is None:
         return []
+    else:
+        return map_model.detect(img, 0.5)
 
 def inverse_d(da, db):
     """
@@ -1249,136 +1464,110 @@ def dom_d(lod):
 
     return solod[dcs.index(max(dcs))]
 
+def build_lop(cyx_map, lop):
+    """
+    cost y x np array, tuple(Point, Point, Point) -> list(Point)
+    Tracedown the points from the end point to the start point
+    and add them to a list and return it
+    """
+    nxp = lop[-1]
+    while not np.array_equal(cyx_map[nxp[1], nxp[0]], (0, 0, 0)):
+        nxp = cyx_map[nxp[1], nxp[0]][1:]
+        nxp = int(nxp[1]), int(nxp[0])
+        lop.append(nxp)
+
+    return lop[::-1]
+
+def nearest_b(p, vmap):
+    """
+    Point, bi np im -> Point
+    Return the nearest point to 'p'
+    that serves as a 'good point' to
+    start from or head to
+    'good point' means black pixel
+    surrounded by all black pixels
+    """
+    if vmap[p[1], p[0]] == 0:
+        return p
+    else:
+        if p[1] - 10 < 0:
+            by1 = 0
+            by2 = 20
+        elif p[1] + 10 > CSH - 1:
+            by1 = CSH - 21 
+            by2 = CSH - 1 
+        else:
+            by1 = p[1] - 10
+            by2 = p[1] + 10
+        if p[0] < 0:
+            bx1 = 0
+            bx2 = 20
+        elif p[0] + 10 > CSW - 1:
+            bx1 = CSW - 21
+            bx2 = CSW - 1
+        else:
+            bx1 = p[0] - 10
+            bx2 = p[0] + 10
+
+        sl = sorted(
+                    tuple(zip(*np.where(vmap[by1:by2, bx1:bx2] == 0))), 
+                    key=lambda x: dist((x[1] + bx1, x[0] + by1), p)
+                    )
+        if len(sl) == 0:
+            return p
+        else:
+            ep = sl[0][::-1]
+            return ep[0] + bx1, ep[1] + by1
+
 def best_path(vmap, sp, ep):
     """
     bi np im, Point, Point -> list(Point)
     Determine the shortest path from 'sp' to 'ep'
     based on the given map 'vmap'
     """
-    lop = [sp,]
-    lod = [(0, 0),]
+    # vmap is of size CSWxCSH, shape CSHxCSW
+    sp, ep = nearest_b(sp, vmap), nearest_b(ep, vmap)
+    h, w = vmap.shape[:2]
+    cyx_map = np.zeros(vmap.shape[:2] + (3,))
+    cyx_map[:, :] = 1, 0, 0
+    cyx_map[sp[1], sp[0]] = 0, 0, 0
+    cyx_map[ep[1], ep[0]] = 0, 0, 0
     cp = sp
-    cd = dist(cp, ep)
-    fctr = 10 
-    h, w = vmap.shape
-    svmap = vmap.copy()
-    svmap[cp[1], cp[0]] = 255
-    #svmap = cv.drawMarker(svmap, cp, 255, cv.MARKER_DIAMOND, 10, 10)
-    dta = None
-    dbl_inv = False
-    loladi = []
-    nobt = 0
-    while cd > 50 and len(lop) < 200:
-        losp = []
-        #print(dta)
+    # Testing
+    #svmap = vmap.copy()
+    
+    while True:
         for x in range(-1, 2):
             for y in range(-1, 2):
-                if not (dta is None) and (not inverse_d((x, y), dta)):
-                    #print("DTA:", (x, y))
+                tp = cp[0] + x, cp[1] + y
+                if (tp[0] < 0 or tp[1] < 0 or
+                    tp[0] >= CSW or tp[1] >= CSH or
+                    (x, y) == (0, 0)):
                     continue
-                tp = (x * fctr) + cp[0], (y * fctr) + cp[1]
-                if 0 < tp[0] < w and 0 < tp[1] < h:
-                    dsdf = dist(tp, ep)
-                    #print((x, y), dsdf, (svmap[tp[1]-15:tp[1]+15, tp[0]-15:tp[0]+15]//255).sum())
-                    if (vmap[tp[1], tp[0]] == 0 and 
-                        ((svmap[tp[1]-20:tp[1]+20, tp[0]-20:tp[0]+20]//255).sum() < 60)):
-                        #print(sp, ep, tp, dsdf, vmap[tp[1], tp[0]])
-                        if not (tp in lop):
-                            losp.append((tp, dsdf, (x, y)))
-        
-        dta = None
-        losp.sort(key=lambda x: x[1])
-        if len(losp) == 0:
-            if len(lop) == 1:
-                fctr *= 2
-            else:
-                if len(loladi) == 0:
-                    return lop
+                if tp == ep:
+                    return build_lop(cyx_map, [ep, tp, cp])
+                elif cyx_map[tp[1], tp[0]][0] == 1:
+                    #if vmap[tp[1], tp[0]] == 0:
+                    if vmap[tp[1]-1:tp[1]+1, tp[0]-1:tp[0]+1].sum() == 0:
+                        cyx_map[tp[1], tp[0]] = (round(dist(tp, ep) + 
+                                                        dist(tp, sp)),
+                                                  cp[1], cp[0])
+                    else:
+                        cyx_map[tp[1], tp[0]] = 0, 0, 0
 
-                sloladi = list(sorted(loladi, key=lambda x: x[1]))
-                ladi = sloladi[0][0] + 1
-                if ladi == len(lop):
-                    ladi = sloladi[1][0] + 1 if len(loladi) > 1 else 1
-                    loladi = loladi[:loladi.index(sloladi[1])]
-                else:
-                    loladi = loladi[:loladi.index(sloladi[0])]
-
-                i = ladi
-                for p in lop[i:]:
-                    svmap[p[1], p[0]] = 0
-                #print("loladi:", loladi)
-                #print("Backtracking to index:", i, len(lop))
-                if i <= 2:
-                    return lop
-
-                dta = lod[i]
-                lop = lop[:i]
-                lod = lod[:i]
-                cp  = lop[-1]
-                fctr = 10
-                cd = dist(cp, ep)
-                nobt += 1
-                #print(lop[-3:])
-                #print(cp)
-                #cv.imshow("svamp", svmap)
-                #cv.waitKey(0)
-                if nobt >= 2:
-                    return lop
-        else:
-            #print("Factor:", fctr, "Distance from sp:", dist(cp, bp))
-            #print("Compared directions:", bxy, lod[-1])
-            bi = 0
-            dd = dom_d(lod)
-            #print("Dominant direction:", dd)
-            for i, (_, _, xy) in enumerate(losp):
-                #print(i, xy, dd)
-                if inverse_d(xy, dd):
-                    continue
-                else:
-                    bi = i
-                    #print("Best bi:", bi)
-                    break
-            else:
-                if dbl_inv:
-                    return lop
-
-                dbl_inv = True
-                i = ind_of_ld(lod, xy) + 1
-                for p in lop[i:]:
-                    svmap[p[1], p[0]] = 0
-                #print("Index:", i, len(lop))
-                if i == len(lod):
-                    dta = xy
-                else:
-                    dta = lod[i]
-                    if i != len(lop):
-                        cp = lop[i-1]
-                        lop = lop[:i]
-                        lod = lod[:i]
-                #print(lop[-3:])
-                #print(cp)
-                fctr = 10
-                cd = dist(cp, ep)
-                #print("New DTA:", dta)
-                #cv.imshow("svamp", svmap)
-                #cv.waitKey(0)
-                continue
-
-            cp, cd, bxy = losp[bi]
-            #print("Best direction:", losp[bi])
-            dbl_inv = False
-            fctr = 10
-            if bxy[0] != lod[-1][0] and bxy[1] != lod[-1][1]:
-                ladi = len(lod) - 1
-                loladi.append((ladi, cd))
-            lod.append(bxy)
-            lop.append(cp)
-            #svmap = cv.drawMarker(svmap, cp, 255, cv.MARKER_DIAMOND, 5, 3)
-            svmap[cp[1], cp[0]] = 255
-            #cv.imshow("svamp", svmap)
+        cost_map = cyx_map[:, :, 0]
+        if cost_map[cost_map > 1].size > 0:
+            min_cost = np.min(cost_map[cost_map > 1])
+            locs = np.where(cost_map == min_cost)
+            mloc = locs[0][0], locs[1][0]
+            cp = mloc[1], mloc[0]
+            cyx_map[mloc][0] = 0
+            # Testing
+            #svmap[mloc] = 255
+            #cv.imshow("Pathing", cv.resize(svmap, (800, 600)))
             #cv.waitKey(0)
-
-    return lop
+        else:
+            return [sp, ep]
 
 def r_to_d(r): 
     return r * (180/pi)
@@ -1405,13 +1594,13 @@ def path_to_dr(lop):
     the next direction to move toward
     to follow the path
     """
-    tpi = choice((5, 10, 15, 20))
+    tpi = choice((1, 3, 4, 5, 6, 7, 8, 9, 10, 20))
     mnp = tpi if len(lop) >= tpi else len(lop)
 
     sp = lop[0]
     if len(lop) <= 1:
         ep = lop[-1]
-    elif dist(sp, lop[1]) < 50:
+    elif dist(sp, lop[1]) < 5:
         ep = lop[mnp-1]
     else:
         ep = lop[1]
@@ -1448,7 +1637,7 @@ def draw_path(lop, vmap):
     and return it
     """
     for p in lop:
-        vmap = cv.drawMarker(vmap, p, 255, cv.MARKER_DIAMOND, 5, 5)
+        vmap = cv.drawMarker(vmap, p, 255, cv.MARKER_DIAMOND, 1, 1)
 
     return vmap
 
@@ -1461,11 +1650,35 @@ def untangle(path, vmap):
     cp = path[0]
     for i in range(len(path)-1, -1, -1):
         p = path[i]
-        if not (255 in vmap[cv.line(vmap.copy(), cp, p, 1) == 1]):
+        if not (255 in vmap[cv.line(vmap.copy(), cp, p, 1, thickness=2) == 1]):
             return [cp,] + path[i:]
             #if dist(p, path[n]) < 40:
 
     return path
+
+CSW, CSH = 64, 64
+
+def shrink_vmap(vmap, sp, ep):
+    """
+    bi np im, Point, Point -> bi np im, Point, Point
+    Compress vmap to size 64x64
+    and return the corresponding points of sp and ep
+    in the new grid
+    """
+    xfc, yfc = vmap.shape[1] / CSW, vmap.shape[0] / CSH
+    vmap = cv.resize(vmap, (CSW, CSH))
+    nsp = (round(sp[0]/xfc), round(sp[1]/yfc))
+    nep = (round(ep[0]/xfc), round(ep[1]/yfc))
+    if nsp[0] > CSW - 1:
+        nsp = CSW - 1, nsp[1]
+    if nsp[1] > CSH - 1:
+        nsp = nsp[0], CSH - 1 
+    if nep[0] > CSW - 1:
+        nep = CSW - 1, nep[1]
+    if nep[1] > CSH - 1:
+        nep = nep[0], CSH - 1 
+    
+    return vmap, nsp, nep
 
 def direction(img, sp, ep):
     """
@@ -1480,6 +1693,15 @@ def direction(img, sp, ep):
     loob = map_objs(img) 
 
     vmap = make_vmap(img)
+    vmap, sp, ep = shrink_vmap(vmap, sp, ep)
+    # Testing, TODO: Remove
+    #img.img = np.pad(img.img, ((0, 0), (0, 0), (0, 1)))
+    #img.img[:, :, 3] = 255
+    #img.img[vmap==255] = np.array((0, 255, 0, 50), dtype=img.img.dtype)
+    #cv.imshow("Path Image", cv.resize(img.img, (800, 600)))
+    #cv.waitKey(0)
+    #return
+    #
     bpath = best_path(vmap, sp, ep)
     bpath = untangle(bpath, vmap)
     #tvmap = draw_path(bpath, vmap.copy())  # Testing
@@ -1500,9 +1722,9 @@ def direction(img, sp, ep):
     #             img.img, np.array((255, 255, 255), 
     #                                          dtype=img.img.dtype)), 
     #    (800, 600)))
-    #vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_STAR, 20, 2)
-    #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_STAR, 20, 2)
-    #vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_STAR, 20, 2)
+    #vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_DIAMOND, 2, 1)
+    #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
+    #vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
     #cv.imshow("vmap",  cv.resize( vmap, (800, 600)))
     #cv.waitKey(1)
     return dr
@@ -1665,15 +1887,33 @@ if __name__ == "__main__":
     #win.repos(0, 0)
     #new_win(win.size)
     #reg = 0, 0, win.size[0], win.size[1]
-    init_ocr(['en'])
-    img = read_img("test.png")
-    recognize_map(img)
+    #__record(reg)
+    #quit()
+    #init_ocr(['en'])
+    #img = read_img("test.png")
+    #recognize_map(img)
+    #cur_map = "VAVA"
+    #load_map_model("VAVA")
+    #img = read_img("test.png")
+    #direction(img, (0, 0), (0, 0))
+    #quit()
+    sp = (71, 64)
+    ep = (45, 62)
+    cur_map = "VAVA"
+    load_map_model("VAVA")
+    for i in range(int(argv[1]), 700):
+        img = read_img("_test/_pathing/vault/{}.png".format(i))
+        print("Image:", i)
+        direction(img, sp, ep)
     quit()
     if argv[1] == "test":
         while True:
             img = read_img("test.png")
-            ep = barrels(img)[int(argv[2])]
+            #ep = barrels(img)[int(argv[2])]
+            ep = locate_chicks(img)[int(argv[2])]
             sp = player(img)[0]
+            cur_map = "VAVA"
+            load_map_model("VAVA")
             print(sp, ep)
             direction(img, sp, ep)
     else:
