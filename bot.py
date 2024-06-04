@@ -1,5 +1,4 @@
 from math import dist
-from socket import MsgFlag
 from time import sleep, time
 from cvbot.capture import get_region
 from cvbot.keyboard import listener, combo_press, kbd, press
@@ -10,7 +9,6 @@ from collections import deque
 from datetime import datetime
 import detect
 # Testing
-import cv2 as cv
 import traceback
 
 
@@ -598,15 +596,18 @@ def mode_detective():
     Know the current mode in play
     and change global variable 'gmode'
     """
-    global img, gmode
+    global img, gmode, hp
 
     while boton:
         while running and boton:
             if not (img is None):
-                gmode = detect.game_mode(img)
-                sleep(2)
-                detect.recognize_map(img)
-            sleep(3)
+                gmr = detect.detect_mode_map(img)
+                if not (gmr is None):
+                    gmode = gmr
+            if hp == 0:
+                sleep(5)
+            else:
+                sleep(30)
         sleep(1)
 
 def run():

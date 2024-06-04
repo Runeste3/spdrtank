@@ -636,44 +636,22 @@ def thresh_words(img):
                         (255, 255, 255, 255)))
 
 GMSR = [
-    ("escort the payload!", 2),
-    ("eskortiere die ladung!", 2),
-    ("collect and deliver chickens!", 3),
-    ("sammeln und liefern sie huhner!", 3),
-    ("capture the control point!", 4),
-    ("defend the control point!", 4),
-    ("erobere den kontrollpunkt!", 4),
-    ("verteidige den kontrollpunkt!", 4)
+    ("TEAM DEATHMATCH",  1),
+    ("POULTRY PUSHER",   2),
+    ("CHICKEN CHASER",   3),
+    ("KING OF THE HILL", 4),
 ]
 
 def gms_to_mode(gms):
     """
-    str -> int[1-5]
+    str -> int[1-5] | None
     Identify mode based on guiding sentence
     """
-    gms = gms.lower()
-
     for sgms, md in GMSR:
         smr = fuzz.ratio(sgms, gms)
         if smr > 90:
             return md
-
-    return 1
-
-def game_mode(img):
-    """
-    Image -> int[1-5] 
-    Identify the current mode being played
-    and Return the mode number identifier
-    """
-    mdim = crop_mode(img)
-    tmdim = thresh_words(mdim)
-    logms = read(tmdim, join_wrd=False)
-    if len(logms) != 0:
-        gms = logms[-1]
-        return gms_to_mode(gms)
-
-    return 1
+    return None 
 
 def main_scene(img):
     """
@@ -885,7 +863,7 @@ def lf_detail_vault(vmap):
             elif name == "Wall-15":
                 vmap = cut_tri("bl", vmap, box, (100, 100), igm=True)
                 vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
-                vmap = cut_tri("tr", vmap, box, (400, 150), igm=True, flipx=True)
+                vmap = cut_tri("tr", vmap, box, (350, 150), igm=True, flipx=True)
                 vmap = cut_tri("tr", vmap, box, (450, 150))
             elif name == "Wall-17":
                 vmap = cut_tri("tr", vmap, box, (150, 200), igm=True)
@@ -1012,6 +990,13 @@ def detail_vault(vmap):
             y2 += 100
             if y2 > h:
                 y2 = h
+        elif name == "Pit-5":
+            x1 -= 50
+            x2 += 50
+            if x1 < 0:
+                x1 = 0
+            if x2 > h:
+                x2 = h
         elif name == "Pit-6":
             y2 = h
         elif name == "Pit-7":
@@ -1314,7 +1299,7 @@ def mn_to_mp(gmn):
 
     return cur_map 
 
-def recognize_map(img):
+def detect_mode_map(img):
     """
     Image -> str
     Recognize the map in the given image
@@ -1324,19 +1309,24 @@ def recognize_map(img):
     mnim = process_mn(img) 
     result = read(mnim, " ABCDEFGHIJKLMNOPQRSTUVWXYZ")
     if " ON " in result:
-        result = result.split(" ON ")[-1]
+        mds, mps = result.split(" ON ")
     elif " OM " in result:
-        result = result.split(" OM ")[-1]
+        mds, mps = result.split(" OM ")
     else:
-        result = ""
+        mds, mps = "", ""
     
-    if result != "":
+    if mds != "" and mps != "":
         global cur_map
-        prsd_map = mn_to_mp(result)
+        prsd_map = mn_to_mp(mps)
+        prsd_mode = gms_to_mode(mds)
         if cur_map != prsd_map:
             print("\n Loading map model... \n")
             load_map_model(prsd_map)
         cur_map = prsd_map
+    else:
+        prsd_mode = None
+    
+    return prsd_mode
 
 def load_map_model(pm):
     """
