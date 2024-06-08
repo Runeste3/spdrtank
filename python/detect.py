@@ -16,6 +16,7 @@ from os import listdir
 print("\n Initiating Neural Nets... \n")
 chk_model = Model("src/models/chick.onnx", ["chick",])
 map_model = None
+game_mode = None
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -730,7 +731,7 @@ def __record(reg):
 
     while True:
         img = get_region(reg)
-        save_img(img, "_test/_pathing/Vault/{}.png".format(i))
+        save_img(img, "__test/_pathing/Haven/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -964,7 +965,7 @@ def detail_vault(vmap):
     bi np im -> bi np im
     Details for Vault Of Value map
     """
-    global loob
+    global loob, game_mode
 
     h, w = vmap.shape[:2]
 
@@ -979,6 +980,14 @@ def detail_vault(vmap):
             y1 += 50
             if y1 > h:
                 y1 -= 50 
+        elif name == "Wall-14" and game_mode == 3:
+            x2 += 50
+            if x2 > w:
+                x2 = w
+        elif name == "Wall-11" and game_mode == 3:
+            x1 -= 50
+            if x1 < 0:
+                x1 = 0
         # PITS
         if name == "Pit-1":
             x2 += 100
@@ -1023,7 +1032,7 @@ def detail_vault(vmap):
             vmap = cut_tri("tr", vmap, box, (100, 100), igm=True)
         elif name == "Wall-7":
             vmap = cut_tri("br", vmap, box, (270, 250), igm=True, flipx=True)
-            vmap = cut_tri("br", vmap, box, (500, 200), igm=True, flipx=True)
+            vmap = cut_tri("br", vmap, box, (500, 150), igm=True, flipx=True)
             vmap = cut_tri("bl", vmap, box, (250, 200), igm=True)
             vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
             vmap = cut_tri("tl", vmap, box, (150, 150), igm=True)
@@ -1037,7 +1046,7 @@ def detail_vault(vmap):
         elif name == "Wall-15":
             vmap = cut_tri("bl", vmap, box, (100, 100), igm=True)
             vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
-            vmap = cut_tri("tr", vmap, box, (400, 150), igm=True, flipx=True)
+            vmap = cut_tri("tr", vmap, box, (350, 150), igm=True, flipx=True)
             vmap = cut_tri("tr", vmap, box, (450, 150))
         elif name == "Wall-17":
             vmap = cut_tri("tr", vmap, box, (150, 200), igm=True)
@@ -1316,9 +1325,10 @@ def detect_mode_map(img):
         mds, mps = "", ""
     
     if mds != "" and mps != "":
-        global cur_map
+        global cur_map, game_mode
         prsd_map = mn_to_mp(mps)
         prsd_mode = gms_to_mode(mds)
+        game_mode = prsd_mode
         if cur_map != prsd_map:
             print("\n Loading map model... \n")
             load_map_model(prsd_map)
@@ -1477,37 +1487,15 @@ def nearest_b(p, vmap):
     'good point' means black pixel
     surrounded by all black pixels
     """
-    if vmap[p[1], p[0]] == 0:
+    sl = sorted(
+                tuple(zip(*np.where(vmap == 0))), 
+                key=lambda x: dist((x[1], x[0]), p)
+                )
+    if len(sl) == 0:
         return p
     else:
-        if p[1] - 10 < 0:
-            by1 = 0
-            by2 = 20
-        elif p[1] + 10 > CSH - 1:
-            by1 = CSH - 21 
-            by2 = CSH - 1 
-        else:
-            by1 = p[1] - 10
-            by2 = p[1] + 10
-        if p[0] < 0:
-            bx1 = 0
-            bx2 = 20
-        elif p[0] + 10 > CSW - 1:
-            bx1 = CSW - 21
-            bx2 = CSW - 1
-        else:
-            bx1 = p[0] - 10
-            bx2 = p[0] + 10
-
-        sl = sorted(
-                    tuple(zip(*np.where(vmap[by1:by2, bx1:bx2] == 0))), 
-                    key=lambda x: dist((x[1] + bx1, x[0] + by1), p)
-                    )
-        if len(sl) == 0:
-            return p
-        else:
-            ep = sl[0][::-1]
-            return ep[0] + bx1, ep[1] + by1
+        ep = sl[0][::-1]
+        return ep[0], ep[1]
 
 def best_path(vmap, sp, ep):
     """
@@ -1872,13 +1860,13 @@ if __name__ == "__main__":
     from matplotlib import colors
 
 
-    #hwnd = find_window("Spider Tanks", exact=True)
-    #win = Window(hwnd)
-    #win.repos(0, 0)
-    #new_win(win.size)
-    #reg = 0, 0, win.size[0], win.size[1]
-    #__record(reg)
-    #quit()
+    hwnd = find_window("Spider Tanks", exact=True)
+    win = Window(hwnd)
+    win.repos(0, 0)
+    new_win(win.size)
+    reg = 0, 0, win.size[0], win.size[1]
+    __record(reg)
+    quit()
     #init_ocr(['en'])
     #img = read_img("test.png")
     #recognize_map(img)

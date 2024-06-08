@@ -610,6 +610,29 @@ def mode_detective():
                 sleep(30)
         sleep(1)
 
+def printer():
+    """
+    None -> None
+    Print the current bot actions
+    """
+    global gmsg, hp, energy, gmode
+
+    while boton:
+        while running and boton:
+            if not (img is None):
+                print(gmsg,
+                        "|",
+                        "HP:", hp, "ENR:", energy, 
+                        "|",
+                        detect.Weapon.tp_to_name(detect.weapon.type),
+                        "|",
+                        gmode_to_smode[gmode],
+                        "|",
+                        gmp_to_gmn[detect.cur_map],
+                        " " * 10, end="\r")
+            sleep(0.5)
+        sleep(1)
+
 def run():
     """
     None -> None
@@ -625,6 +648,7 @@ def run():
     Thread(target=queuer).start()
     Thread(target=dialoger).start()
     Thread(target=mode_detective).start()
+    Thread(target=printer).start()
 
     while boton:
         while running and boton:
@@ -640,18 +664,6 @@ def run():
                                                        detect.Weapon.FLAME,
                                                        detect.Weapon.SANTA)
                         else 1)
-
-            if running:
-                print(gmsg,
-                      "|",
-                      "HP:", hp, "ENR:", energy, 
-                      "|",
-                      detect.Weapon.tp_to_name(detect.weapon.type),
-                      "|",
-                      gmode_to_smode[gmode],
-                      "|",
-                      gmp_to_gmn[detect.cur_map],
-                      " " * 10, end="\r")
         sleep(1)
 
 if __name__ == "__main__":
