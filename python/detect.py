@@ -855,7 +855,7 @@ def lf_detail_vault(vmap):
                 vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
                 vmap = cut_tri("tl", vmap, box, (150, 150), igm=True)
             elif name == "Wall-9":
-                vmap = cut_tri("tl", vmap, box, (350, 275), igm=True, flipy=True)
+                vmap = cut_tri("tl", vmap, box, (350, 250), igm=True, flipy=True)
                 vmap = cut_tri("tl", vmap, box, (150, 350), igm=True)
                 vmap = cut_tri("tr", vmap, box, ( 50,  50), igm=True)
                 vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
@@ -1010,6 +1010,9 @@ def detail_vault(vmap):
             y2 = h
         elif name == "Pit-7":
             y1 -= 20
+            y2 += 50
+            if y2 > h:
+                y2 = h
             if y1 < 0:
                 y1 = 0
         elif name == "Pit-8":
