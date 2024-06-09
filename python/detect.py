@@ -727,11 +727,11 @@ def hill(img):
     
 def __record(reg):
     sleep(3)
-    i = 0
+    i = 782
 
     while True:
         img = get_region(reg)
-        save_img(img, "__test/_pathing/Haven/{}.png".format(i))
+        save_img(img, "__test/_pathing/Vault/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -843,7 +843,7 @@ def lf_detail_vault(vmap):
                 vmap = cut_tri("br", vmap, box, (100, 100), igm=True)
             elif name == "Wall-4":
                 vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
-                vmap = cut_tri("br", vmap, box, (200, 380), igm=True, flipy=True)
+                vmap = cut_tri("br", vmap, box, (200, 350), igm=True, flipy=True)
                 vmap = cut_tri("tr", vmap, box, (250, 600), igm=True, flipy=True)
             elif name == "Wall-6":
                 vmap = cut_tri("bl", vmap, box, (200, 300), igm=True)
@@ -855,7 +855,7 @@ def lf_detail_vault(vmap):
                 vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
                 vmap = cut_tri("tl", vmap, box, (150, 150), igm=True)
             elif name == "Wall-9":
-                vmap = cut_tri("tl", vmap, box, (150, 400), igm=True, flipy=True)
+                vmap = cut_tri("tl", vmap, box, (350, 275), igm=True, flipy=True)
                 vmap = cut_tri("tl", vmap, box, (150, 350), igm=True)
                 vmap = cut_tri("tr", vmap, box, ( 50,  50), igm=True)
                 vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
@@ -1634,7 +1634,7 @@ def untangle(path, vmap):
 
     return path
 
-CSW, CSH = 64, 64
+CSW, CSH = 114, 64
 
 def shrink_vmap(vmap, sp, ep):
     """
