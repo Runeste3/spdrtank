@@ -3,27 +3,37 @@ from time import sleep
 
 
 kbd = Controller()
-lstnrs = {} 
+lstnr = None
+kfd = {}
 
 
-def listener(name, key, func):
+def add_kf(key, func):
     """
-    str, str, func -> None
+    str, func -> None
+    Add key:function pair to 'kfd' for main
+    listener callback
+    """
+    global kfd
+    key = _parse_key(key, listen=True)
+    kfd[key] = func
+
+def listener():
+    """
+    None -> None
     Initiate a callback function when a key is pressed
     """
-    global lstnrs
+    global lstnr
 
-    if not (lstnrs.get(name) is None):
-        lstnrs[name].stop()
-
-    key = _parse_key(key, listen=True)
+    if not (lstnr is None):
+        lstnr.stop()
 
     def aux(k):
-        if str(k) == str(key):
-            func()
+        for key in kfd.keys():
+            if str(k) == str(key):
+                kfd[key]()
 
-    lstnrs[name] = Listener(aux)
-    lstnrs[name].start()
+    lstnr = Listener(aux)
+    lstnr.start()
 
 def ktype(wrd):
     """

@@ -5,9 +5,13 @@ import numpy as np
 
 class Image:
     def __init__(self, img, name="snapshot"):
-        self.img  = img
         self.name = name
         self.type = "grey" if len(img.shape) < 3 else "bgr"
+
+        if self.type == "bgr" and img.shape[-1] > 3:
+            self.img = cv.cvtColor(img, cv.COLOR_BGRA2BGR)
+        else:
+            self.img  = img
 
     def __channels(self):
         """

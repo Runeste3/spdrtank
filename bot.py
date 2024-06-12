@@ -1,13 +1,15 @@
 from math import dist
 from time import sleep, time
 from cvbot.capture import get_region
-from cvbot.keyboard import listener, combo_press, kbd, press
+from cvbot.keyboard import listener, kbd, press, add_kf
 from cvbot.mouse import click, ms, msbtn, move
 from threading import Thread, Timer
 from random import randrange, uniform
 from collections import deque
 from datetime import datetime
 import detect
+import json
+from os import get_terminal_size as gts
 # Testing
 import traceback
 
@@ -286,7 +288,7 @@ def tdm_move():
             loai = detect.aly_inds(img)
             if loai:
                 naly = loai[0]
-                log("Moving toward ally arrow")
+                log("Moving to arrow")
                 move_toward(naly)
             elif loenm:
                 random_move()
@@ -303,7 +305,7 @@ def tdm_move():
             loai = detect.aly_inds(img)
             if loai:
                 naly = loai[0]
-                log("Moving toward ally arrow")
+                log("Moving to arrow")
                 move_toward(naly)
 
 def basic_move():
@@ -321,7 +323,7 @@ def basic_move():
         loai = detect.aly_inds(img)
         if loai:
             naly = loai[0]
-            log("Moving toward ally arrow")
+            log("Moving to arrow")
             move_toward(naly)
         elif loenm:
             random_move()
@@ -338,7 +340,7 @@ def pltry_move():
         basic_move()
     else:
         if dist(cpos, slfloc) > detect.recal(100):
-            log("Moving to the poultry")
+            log("Moving to poultry")
             move_toward(cpos)
         else:
             release_all()
@@ -355,7 +357,7 @@ def chkchs_move():
         lobrl.sort(key=lambda brl: dist(brl, slfloc))
         brl = lobrl[0][0], int(lobrl[0][1] + detect.recal(70))
         if dist(brl, slfloc) > detect.recal(100):
-            log("Unloading collected chicks")
+            log("Unloading chicks")
             move_toward(brl)
         else:
             release_all()
@@ -378,7 +380,7 @@ def koh_move():
 
     hill = detect.hill(img)
     if not (hill is None):
-        log("Moving to the hill")
+        log("Moving to hill")
         move_toward(hill)
     else:
         basic_move()
@@ -617,19 +619,24 @@ def printer():
     """
     global gmsg, hp, energy, gmode
 
+    tl = gts()[0] 
+
     while boton:
         while running and boton:
             if not (img is None):
-                print(gmsg,
-                        "|",
-                        "HP:", hp, "ENR:", energy, 
-                        "|",
-                        detect.Weapon.tp_to_name(detect.weapon.type),
-                        "|",
-                        gmode_to_smode[gmode],
-                        "|",
-                        gmp_to_gmn[detect.cur_map],
-                        " " * 10, end="\r")
+                wnm = detect.Weapon.tp_to_name(detect.weapon.type)
+                gmds = gmode_to_smode[gmode]
+                gmps = gmp_to_gmn[detect.cur_map]
+
+                msg = f"{gmsg} | HP: {hp} | ENR: {energy} | {wnm} | {gmds} | {gmps}"
+
+                if len(msg) > tl:
+                    msg = msg[:(tl-3)] + "..."
+                else:
+                    msg = f"{msg:{tl}}"
+
+                print(msg, end="\r")
+
             sleep(0.5)
         sleep(1)
 
@@ -662,9 +669,54 @@ def run():
                 detect.weapon.update(img)
                 atkmode = (0 if detect.weapon.type in (detect.Weapon.CARVER,
                                                        detect.Weapon.FLAME,
-                                                       detect.Weapon.SANTA)
+                                                       detect.Weapon.SANTA,
+                                                       detect.Weapon.SHOTGUN)
                         else 1)
         sleep(1)
+
+def read_conf():
+    global HPTHS, ENTHS, mv_far
+
+    try:
+        with open('config.json', 'r') as f:
+            conf = json.load(f)
+
+        HPTHS = int(conf['hpt'])
+        ENTHS = int(conf['ent'])
+        mv_far = conf['mf'] == "1"
+    except:
+        print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
+        save_conf()
+        read_conf()
+
+def save_conf():
+    global mv_far, HPTHS, ENTHS, running
+
+    running = False
+
+    sleep(0.5)
+
+    print("\n")
+
+    HPTHS, ENTHS = "", ""
+
+    while not (HPTHS.isnumeric() and ENTHS.isnumeric()):
+        HPTHS, ENTHS = (input("HP threshold(0-100): "), 
+                        input("Energy threshold(0-100): "))
+    HPTHS, ENTHS = int(HPTHS), int(ENTHS)
+    mv_far = input("Follow the closest teammate? Y/N: ").lower() == "n"
+
+    print("\n")
+
+    conf = {}
+    conf['hpt'] = str(HPTHS)
+    conf['ent'] = str(ENTHS)
+    conf['mf']  = "1" if mv_far else "0"
+
+    running = True
+
+    with open('config.json', 'w') as f:
+        json.dump(conf, f)
 
 if __name__ == "__main__":
     # Testing
@@ -688,22 +740,19 @@ if __name__ == "__main__":
     CENTER = (GMREG[2] // 2,
             GMREG[3] // 2)
     slfloc = CENTER
-    HPTHS, ENTHS = "", ""
     gmode = 1
 
     print("\n Initiating OCR... \n")
     detect.init_nr()
 
-    while not (HPTHS.isnumeric() and ENTHS.isnumeric()):
-        HPTHS, ENTHS = (input("HP threshold(0-100): "), 
-                        input("Energy threshold(0-100): "))
-    HPTHS, ENTHS = int(HPTHS), int(ENTHS)
-    mv_far = input("Follow the closest teammate? Y/N: ").lower() == "n"
+    read_conf()
 
     if 100 > HPTHS > 0 and 100 > ENTHS > 0:
-        listener("on/off", "q", botoff)
-        listener("pause/run", "p", pause_run)
-        listener("competitive", "m", sr_cmptv)
+        add_kf("q", botoff)
+        add_kf("p", pause_run)
+        add_kf("m", sr_cmptv)
+        add_kf("z", save_conf)
+        listener()
 
         print("")
         run()

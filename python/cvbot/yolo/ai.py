@@ -2,22 +2,52 @@ import cv2
 import numpy as np
 import onnxruntime as ort
 from cvbot.images import Image
-#from time import time
+from ultralytics import YOLO
 
 
 classifiers = {}
 
 class Model:
-    def __init__(self, path, classes) -> None:
-        self.session = ort.InferenceSession(path, 
-                       providers=['CUDAExecutionProvider', 
-                                  'CPUExecutionProvider'])
+    def __init__(self, path, classes=[]) -> None:
+        if path.endswith("onnx"):
+            self.session = ort.InferenceSession(path, 
+                        providers=['CUDAExecutionProvider', 
+                                    'CPUExecutionProvider'])
+            self.model_type = "onnx"
+        elif path.endswith("pt"):
+            self.session = YOLO(path, verbose=False)
+            self.model_type = "pytorch"
         self.classes = classes
-        self.detect(Image(np.zeros((640, 640), np.uint8)), 0.6)
+        self.detect(Image(np.zeros((640, 640, 3), np.uint8)), 0.6)
 
     def detect(self, img, thresh):
+        if self.model_type == "onnx":
+            return self.detect_onnx(img, thresh)
+        elif self.model_type == "pytorch":
+            return self.detect_pt(img, thresh)
+        else:
+            print("[ERROR] MODEL TYPE NOT SUPPORTED")
+            return ()
+    
+    def detect_pt(self, img, thresh):
+        results = self.session.predict(img.img, verbose=False)
+        locms = [] 
+
+        for result in results:
+            for i in range(len(result.boxes)):
+                conf = result.boxes[i].conf
+                if conf > thresh:
+                    name = result.boxes[i].cls
+                    mask = result.masks[i]
+                    mask = np.array(mask.xy, np.int32)[0]
+                    mask = mask.reshape((-1, 1, 2))
+                    locms.append((mask, conf, name))
+        
+        return locms
+
+    def detect_onnx(self, img, thresh):
         if self.session is None:
-            print("ERROR: MODEL NOT INITIATED PROPERLY!")
+            print("[ERROR] MODEL NOT INITIATED PROPERLY!")
             return ()
 
         outname = [i.name for i in self.session.get_outputs()]

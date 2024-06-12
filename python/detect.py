@@ -28,6 +28,7 @@ class Weapon:
     TORTOISE = 6
     TREX     = 7
     XBOW     = 8
+    SHOTGUN  = 9
 
     WPIMS = {
         read_img("src/weps/{}".format(wpn), "grey"):wpn[:-4].upper()
@@ -43,7 +44,8 @@ class Weapon:
         5:"Santa",
         6:"Tortoise",
         7:"Trex",
-        8:"Xbow"
+        8:"Xbow",
+        9:"Shotgun"
     }
 
     TPTR = {
@@ -55,7 +57,8 @@ class Weapon:
         SANTA   :700,
         TORTOISE:700,
         TREX    :700,
-        XBOW    :900
+        XBOW    :900,
+        SHOTGUN :400
     }
 
     TPTHT = {
@@ -67,7 +70,8 @@ class Weapon:
         SANTA   :0.0,
         TORTOISE:1.0,
         TREX    :2.0,
-        XBOW    :1.0
+        XBOW    :1.0,
+        SHOTGUN :0.0
     }
 
     def __init__(self, tp) -> None:
@@ -1040,7 +1044,7 @@ def detail_vault(vmap):
             vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
             vmap = cut_tri("tl", vmap, box, (150, 150), igm=True)
         elif name == "Wall-9":
-            vmap = cut_tri("tl", vmap, box, (150, 400), igm=True, flipy=True)
+            vmap = cut_tri("tl", vmap, box, (150, 300), igm=True, flipy=True)
             vmap = cut_tri("tl", vmap, box, (150, 350), igm=True)
             vmap = cut_tri("tr", vmap, box, ( 50,  50), igm=True)
             vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
@@ -1163,6 +1167,15 @@ def detail_dc(vmap):
 
     return vmap
 
+def mask_detail(vmap):
+    global loob
+
+    for (mask, _, _) in loob:
+        vmap = cv.drawContours(vmap, [mask], 0, (255, 255, 255), 20)
+        vmap = cv.drawContours(vmap, [mask], 0, (255, 255, 255), -1)
+
+    return vmap
+
 def detail(vmap):
     """
     bi np im -> bi np im
@@ -1175,6 +1188,8 @@ def detail(vmap):
         return detail_dc(vmap)
     elif cur_map == "VAVA":
         return detail_vault(vmap)
+    elif cur_map == "SAHA":
+        return mask_detail(vmap)
     
     return vmap
 
@@ -1400,6 +1415,9 @@ def load_map_model(pm):
                                                     "Pit-8",
                                                     "Wall-19",
                                                     ])
+    elif pm == "SAHA":
+        map_model = Model("src/models/haven.pt")
+
 def map_objs(img):
     """
     Image -> list(box, str, float)
@@ -1467,15 +1485,15 @@ def dom_d(lod):
 
     return solod[dcs.index(max(dcs))]
 
-def build_lop(cyx_map, lop):
+def build_lop(ryx, lop):
     """
-    cost y x np array, tuple(Point, Point, Point) -> list(Point)
+    y x np array, tuple(Point, Point, Point) -> list(Point)
     Tracedown the points from the end point to the start point
     and add them to a list and return it
     """
     nxp = lop[-1]
-    while not np.array_equal(cyx_map[nxp[1], nxp[0]], (0, 0, 0)):
-        nxp = cyx_map[nxp[1], nxp[0]][1:]
+    while not np.array_equal(ryx[nxp[1], nxp[0]], (0, 0)):
+        nxp = ryx[nxp[1], nxp[0]]
         nxp = int(nxp[1]), int(nxp[0])
         lop.append(nxp)
 
@@ -1490,15 +1508,29 @@ def nearest_b(p, vmap):
     'good point' means black pixel
     surrounded by all black pixels
     """
-    sl = sorted(
-                tuple(zip(*np.where(vmap == 0))), 
-                key=lambda x: dist((x[1], x[0]), p)
-                )
-    if len(sl) == 0:
+    if vmap[p[1], p[0]] == 0:
         return p
-    else:
-        ep = sl[0][::-1]
-        return ep[0], ep[1]
+
+    fctr = 2
+
+    while fctr < CSW:
+        for x in range(-1, 2):
+            for y in range(-1, 2):
+                if x == 0 and y == 0:
+                    continue
+
+                tp = p[0] + (fctr * x), p[1] + (fctr * y)
+
+                if (tp[0] < 0) or (tp[1] < 0) or (tp[0] >= CSW) or (tp[1] >= CSH):
+                    continue
+
+                if vmap[tp[1], tp[0]] == 0:
+                    return tp
+        
+        fctr += 2
+
+    return p
+
 
 def best_path(vmap, sp, ep):
     """
@@ -1508,12 +1540,15 @@ def best_path(vmap, sp, ep):
     """
     # vmap is of size CSWxCSH, shape CSHxCSW
     sp, ep = nearest_b(sp, vmap), nearest_b(ep, vmap)
-    h, w = vmap.shape[:2]
-    cyx_map = np.zeros(vmap.shape[:2] + (3,))
-    cyx_map[:, :] = 1, 0, 0
-    cyx_map[sp[1], sp[0]] = 0, 0, 0
-    cyx_map[ep[1], ep[0]] = 0, 0, 0
+    ryx = np.zeros(vmap.shape[:2] + (2,), dtype=np.uint16)
+    visited = np.zeros(vmap.shape[:2], dtype='bool')
+    visited[:, :] = False
+    visited[sp[1], sp[0]] = True
+    visited[ep[1], ep[0]] = False
+    cost_loc = {}
     cp = sp
+    bpsf = cp
+    bcsf = None
     # Testing
     #svmap = vmap.copy()
     
@@ -1526,29 +1561,42 @@ def best_path(vmap, sp, ep):
                     (x, y) == (0, 0)):
                     continue
                 if tp == ep:
-                    return build_lop(cyx_map, [ep, tp, cp])
-                elif cyx_map[tp[1], tp[0]][0] == 1:
-                    #if vmap[tp[1], tp[0]] == 0:
-                    if vmap[tp[1]-1:tp[1]+1, tp[0]-1:tp[0]+1].sum() == 0:
-                        cyx_map[tp[1], tp[0]] = (round(dist(tp, ep) + 
-                                                        dist(tp, sp)),
-                                                  cp[1], cp[0])
-                    else:
-                        cyx_map[tp[1], tp[0]] = 0, 0, 0
+                    return build_lop(ryx, [ep, tp, cp])
+                elif not visited[tp[1], tp[0]]:
+                    visited[tp[1], tp[0]] = True
 
-        cost_map = cyx_map[:, :, 0]
-        if cost_map[cost_map > 1].size > 0:
-            min_cost = np.min(cost_map[cost_map > 1])
-            locs = np.where(cost_map == min_cost)
-            mloc = locs[0][0], locs[1][0]
+                    if vmap[tp[1], tp[0]] == 0:
+                        cost = round(dist(tp, ep) + dist(tp, sp))
+                        ryx[tp[1], tp[0]] = (cp[1], cp[0])
+
+                        if cost_loc.get(cost) is None:
+                            cost_loc[cost] = [tp,]
+                        else:
+                            cost_loc[cost].append(tp)
+
+        costs = cost_loc.keys()
+        if len(costs) > 0:
+            min_cost = min(costs)
+            loc = cost_loc[min_cost][0]
+            mloc = loc[1], loc[0]
+
             cp = mloc[1], mloc[0]
-            cyx_map[mloc][0] = 0
+            if (bcsf is None) or (min_cost < bcsf):
+                bcsf = min_cost
+                bpsf = cp
+
+            cost_loc[min_cost].remove(loc)
+            if len(cost_loc[min_cost]) == 0:
+                del cost_loc[min_cost]
             # Testing
             #svmap[mloc] = 255
             #cv.imshow("Pathing", cv.resize(svmap, (800, 600)))
             #cv.waitKey(0)
         else:
-            return [sp, ep]
+            if bpsf == sp:
+                return [sp, ep]
+            else:
+                return build_lop(ryx, [bpsf,])
 
 def r_to_d(r): 
     return r * (180/pi)
@@ -1697,17 +1745,17 @@ def direction(img, sp, ep):
     #    #                  cv.FONT_HERSHEY_COMPLEX, 1, 255, 2)
     #print(lod)
     #print(dr)
-    #vmap = draw_path(bpath, vmap)  # Testing
+    vmap = draw_path(bpath, vmap)  # Testing
     #cv.imshow("oimg", cv.resize(
     #    np.where(np.pad(np.reshape(vmap, (vmap.shape[0], vmap.shape[1], 1)), ((0, 0), (0, 0), (0, 2)), constant_values=255)==(255, 255, 255), 
     #             img.img, np.array((255, 255, 255), 
     #                                          dtype=img.img.dtype)), 
     #    (800, 600)))
-    #vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_DIAMOND, 2, 1)
-    #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
-    #vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
-    #cv.imshow("vmap",  cv.resize( vmap, (800, 600)))
-    #cv.waitKey(1)
+    vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_DIAMOND, 2, 1)
+    vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
+    vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
+    cv.imshow("vmap",  cv.resize( vmap, (800, 600)))
+    cv.waitKey(1)
     return dr
 
 #def _map_sift():
