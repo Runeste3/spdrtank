@@ -7,8 +7,10 @@ from threading import Thread, Timer
 from random import randrange, uniform
 from collections import deque
 from datetime import datetime
+from cvbot.windows import find_window, Window
 import detect
 import json
+import subprocess
 from os import get_terminal_size as gts
 # Testing
 import traceback
@@ -19,7 +21,7 @@ mv_far = False
 boton = True
 running = True
 gmsg = ""
-cmptv = False
+cmptv = True 
 img = None
 hp, energy = 0, 0 
 xyd = [0, 0]
@@ -63,6 +65,10 @@ def release_all():
 def botoff():
     global boton
     boton = False
+
+def reset():
+    botoff()
+    subprocess.call(['python\python', 'bot.py'], shell=True)
 
 def pause_run():
     global running
@@ -551,17 +557,37 @@ def queuer():
     None -> None
     Join competitive queue automatically
     """
-    global boton, running, cmptv, img
+    global boton, running, cmptv, img, hp
+
+    cmp_prsd = False
+    in_game = False
 
     while boton:
         while running and boton and cmptv:
+            if cmp_prsd and hp > 0:
+                in_game = True
+                cmp_prsd = False
+
             pbtn = detect.play_btn(img)
             if not (pbtn is None):
                 click(pbtn)
             else:
                 cbtn = detect.cmptv_btn(img)
                 if not (cbtn is None):
+                    if in_game:
+                        running = False
+                        sleep(5)
+                        print("\n")
+                        for i in range(45):
+                            print("Resetting after {} seconds...".format(50 - i), end="\r")
+                            sleep(1)
+                        print("\nRESETTING\n")
+                        reset()
+                        return
+
+
                     click(cbtn)
+                    cmp_prsd = True
             sleep(6) 
         sleep(1)
 
@@ -718,20 +744,9 @@ def save_conf():
     with open('config.json', 'w') as f:
         json.dump(conf, f)
 
-if __name__ == "__main__":
-    # Testing
-    #import cv2 as cv
-    #from cvbot.io import read_img
-    #from cvbot.images import Image
+def init():
+    global GMREG, CENTER, slfloc, gmode, HPTHS, ENTHS
 
-    #i = 0
-    #def get_region(reg):
-    #    global i
-    #    img = read_img("test/{}.png".format(i))
-    #    i += 1
-    #    return img
-    #-------------------
-    from cvbot.windows import find_window, Window
     hwnd = find_window("Spider Tanks", exact=True)
     win = Window(hwnd)
     detect.new_win(win.size)
@@ -757,3 +772,18 @@ if __name__ == "__main__":
 
         print("")
         run()
+
+if __name__ == "__main__":
+    # Testing
+    #import cv2 as cv
+    #from cvbot.io import read_img
+    #from cvbot.images import Image
+
+    #i = 0
+    #def get_region(reg):
+    #    global i
+    #    img = read_img("test/{}.png".format(i))
+    #    i += 1
+    #    return img
+    #-------------------
+    init()

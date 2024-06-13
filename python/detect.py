@@ -1745,17 +1745,17 @@ def direction(img, sp, ep):
     #    #                  cv.FONT_HERSHEY_COMPLEX, 1, 255, 2)
     #print(lod)
     #print(dr)
-    vmap = draw_path(bpath, vmap)  # Testing
+    #vmap = draw_path(bpath, vmap)  # Testing
     #cv.imshow("oimg", cv.resize(
     #    np.where(np.pad(np.reshape(vmap, (vmap.shape[0], vmap.shape[1], 1)), ((0, 0), (0, 0), (0, 2)), constant_values=255)==(255, 255, 255), 
     #             img.img, np.array((255, 255, 255), 
     #                                          dtype=img.img.dtype)), 
     #    (800, 600)))
-    vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_DIAMOND, 2, 1)
-    vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
-    vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
-    cv.imshow("vmap",  cv.resize( vmap, (800, 600)))
-    cv.waitKey(1)
+    #vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_DIAMOND, 2, 1)
+    #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
+    #vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
+    #cv.imshow("vmap",  cv.resize( vmap, (800, 600)))
+    #cv.waitKey(1)
     return dr
 
 #def _map_sift():
