@@ -14,10 +14,13 @@ class Model:
                         providers=['CUDAExecutionProvider', 
                                     'CPUExecutionProvider'])
             self.model_type = "onnx"
+            # List
+            self.classes = classes
         elif path.endswith("pt"):
             self.session = YOLO(path, verbose=False)
             self.model_type = "pytorch"
-        self.classes = classes
+            # Dict
+            self.classes = self.session.names
         self.detect(Image(np.zeros((640, 640, 3), np.uint8)), 0.6)
 
     def detect(self, img, thresh):
@@ -37,7 +40,8 @@ class Model:
             for i in range(len(result.boxes)):
                 conf = result.boxes[i].conf
                 if conf > thresh:
-                    name = result.boxes[i].cls
+                    clsid = int(result.boxes[i].cls)
+                    name = self.classes[clsid]
                     mask = result.masks[i]
                     mask = np.array(mask.xy, np.int32)[0]
                     mask = mask.reshape((-1, 1, 2))

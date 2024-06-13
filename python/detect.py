@@ -447,11 +447,11 @@ def end_game(img):
     else:
         return rect 
 
-PLYIM = read_img("src/queue/plybtn.png", "grey")
+PLYIM = read_img("src/queue/plybtn.png",   "grey")
 CMPIM = read_img("src/queue/cmptvbtn.png", "grey")
-RCNIM = read_img("src/queue/recon.png", "grey")
-CNFIM = read_img("src/queue/confail.png", "grey")
-IDLIM = read_img("src/queue/idle.png", "grey")
+RCNIM = read_img("src/queue/recon.png",    "grey")
+CNFIM = read_img("src/queue/confail.png",  "grey")
+IDLIM = read_img("src/queue/idle.png",     "grey")
 
 def play_btn(img):
     """
@@ -939,6 +939,20 @@ def lf_detail_dc(lfmap):
 
     return lfmap
 
+def lf_mask_detail(lfmap):
+    """
+    bi np im -> bi np im
+    Build a line of fire obstacle map using
+    the detected objects in the global variable 'loob'
+    """
+    global loob
+
+    for (mask, _, name) in loob:
+        if name.startswith("w"):
+            lfmap = cv.drawContours(lfmap, [mask], 0, (255, 255, 255), -1)
+
+    return lfmap
+
 def lf_detail(lfmap):
     """
     bi np im -> bi np im
@@ -950,6 +964,8 @@ def lf_detail(lfmap):
         lfmap = lf_detail_dc(lfmap)
     elif cur_map == "VAVA":
         lfmap = lf_detail_vault(lfmap)
+    elif cur_map == "SAHA":
+        lfmap = lf_mask_detail(lfmap)
 
     return lfmap
 
