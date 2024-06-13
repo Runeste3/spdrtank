@@ -568,26 +568,27 @@ def queuer():
                 in_game = True
                 cmp_prsd = False
 
-            pbtn = detect.play_btn(img)
-            if not (pbtn is None):
-                click(pbtn)
-            else:
-                cbtn = detect.cmptv_btn(img)
-                if not (cbtn is None):
-                    if in_game:
-                        running = False
-                        sleep(5)
-                        print("\n")
-                        for i in range(45):
-                            print("Resetting after {} seconds...".format(50 - i), end="\r")
-                            sleep(1)
-                        print("\nRESETTING\n")
-                        reset()
-                        return
+            if not (img is None):
+                pbtn = detect.play_btn(img)
+                if not (pbtn is None):
+                    click(pbtn)
+                else:
+                    cbtn = detect.cmptv_btn(img)
+                    if not (cbtn is None):
+                        if in_game:
+                            running = False
+                            sleep(5)
+                            print("\n")
+                            for i in range(45):
+                                print("Resetting after {} seconds...".format(50 - i), end="\r")
+                                sleep(1)
+                            print("\nRESETTING\n")
+                            reset()
+                            return
 
 
-                    click(cbtn)
-                    cmp_prsd = True
+                        click(cbtn)
+                        cmp_prsd = True
             sleep(6) 
         sleep(1)
 
@@ -746,6 +747,7 @@ def save_conf():
 
 def init():
     global GMREG, CENTER, slfloc, gmode, HPTHS, ENTHS
+    global hwnd, win
 
     hwnd = find_window("Spider Tanks", exact=True)
     win = Window(hwnd)
