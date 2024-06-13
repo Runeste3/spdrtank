@@ -8,13 +8,18 @@ from random import randrange, uniform
 from collections import deque
 from datetime import datetime
 from cvbot.windows import find_window, Window
+from os import get_terminal_size as gts
+from os import listdir
 import detect
 import json
 import subprocess
-from os import get_terminal_size as gts
+import logging
 # Testing
 import traceback
 
+
+# Logging
+logger = logging.getLogger(__name__)
 
 DQSZ = 20
 mv_far = False
@@ -53,6 +58,7 @@ gmode_to_smode = {
 
 def log(m):
     global gmsg
+    logger.info(m)
     gmsg = "[{}] {}...".format(datetime.now().strftime("%M:%S"), 
                                m)
 
@@ -68,6 +74,7 @@ def botoff():
 
 def reset():
     botoff()
+    sleep(5)
     subprocess.call(['python\python', 'bot.py'], shell=True)
 
 def pause_run():
@@ -227,8 +234,9 @@ def mvto_nrst(target):
     """
     global loals, loenm
     nobj = nearest_ally() if target == "ally" else nearest_enm()
-    log("Moving toward {}".format(target))
-    move_toward(nobj)
+    if not (nobj is None):
+        log("Moving toward {} at {}".format(target, nobj))
+        move_toward(nobj)
     return nobj
 
 def mvto_frst(target):
@@ -240,7 +248,7 @@ def mvto_frst(target):
     global loals, loenm
     nobj = farthest_ally() if target == "ally" else farthest_enm()
     if not (nobj is None):
-        log("Moving toward {}".format(target))
+        log("Moving toward {} at {}".format(target, nobj))
         move_toward(nobj)
     return nobj
 
@@ -294,7 +302,7 @@ def tdm_move():
             loai = detect.aly_inds(img)
             if loai:
                 naly = loai[0]
-                log("Moving to arrow")
+                log("Moving to arrows {} {}".format(len(loai), naly))
                 move_toward(naly)
             elif loenm:
                 random_move()
@@ -311,7 +319,7 @@ def tdm_move():
             loai = detect.aly_inds(img)
             if loai:
                 naly = loai[0]
-                log("Moving to arrow")
+                log("Moving to arrows {} {}".format(len(loai), naly))
                 move_toward(naly)
 
 def basic_move():
@@ -320,6 +328,7 @@ def basic_move():
     Do basic movement to allies
     """
     global loals, mv_far, loenm
+
     if loals:
         if not mv_far:
             mvto_nrst("ally")
@@ -329,7 +338,7 @@ def basic_move():
         loai = detect.aly_inds(img)
         if loai:
             naly = loai[0]
-            log("Moving to arrow")
+            log("Moving to arrows: {} {}".format(len(loai), naly))
             move_toward(naly)
         elif loenm:
             random_move()
@@ -346,7 +355,7 @@ def pltry_move():
         basic_move()
     else:
         if dist(cpos, slfloc) > detect.recal(100):
-            log("Moving to poultry")
+            log("Moving to poultry: {}".format(cpos))
             move_toward(cpos)
         else:
             release_all()
@@ -359,11 +368,12 @@ def chkchs_move():
     global img, slfloc
 
     lobrl = detect.barrels(img)
+
     if lobrl:
         lobrl.sort(key=lambda brl: dist(brl, slfloc))
         brl = lobrl[0][0], int(lobrl[0][1] + detect.recal(70))
         if dist(brl, slfloc) > detect.recal(100):
-            log("Unloading chicks")
+            log("Unloading chicks: {} {}".format(len(lobrl), brl))
             move_toward(brl)
         else:
             release_all()
@@ -372,7 +382,7 @@ def chkchs_move():
         if lochk:
             lochk.sort(key=lambda chk: dist(chk, slfloc))
             chk = lochk[0]
-            log("Collecting chicks")
+            log("Collecting chicks: {} {}".format(len(lochk), chk))
             move_toward(chk)
         else:
             basic_move()
@@ -385,8 +395,9 @@ def koh_move():
     global img, slfloc
 
     hill = detect.hill(img)
+
     if not (hill is None):
-        log("Moving to hill")
+        log("Moving to hill: {}".format(hill))
         move_toward(hill)
     else:
         basic_move()
@@ -436,11 +447,11 @@ def attacking():
     Shoot the nearest enemy
     """
     global img, boton, slfloc, loals, loenm, atkmode
-    global running, hp, laht
+    global running, hp, laht, xyd
 
     lmmvt = time()
-    lclkt = time()
     MXRNG = 1000
+    wt = 5
 
     while boton:
         while running and boton:
@@ -459,23 +470,19 @@ def attacking():
                     if dste < MXRNG and detect.open_fire_line(slfloc, nenm):
                         attack(nenm, dste)
                         break
-                #print("Shooting at {}".format(nenm))
             else:
                 ms.release(msbtn.left)
                 laht = None
-                if not (hp is None) and hp > 0:
+                if (time() - lmmvt) > wt:
                     rstloc = (slfloc[0] + (randrange(50, CENTER[0] // 2) * xyd[0]),
-                              slfloc[1] + (randrange(50, CENTER[1] // 2) * xyd[1]))
+                            slfloc[1] + (randrange(50, CENTER[1] // 2) * xyd[1]))
 
                     if rstloc[1] > (CENTER[1] * 1.5):
                         continue
 
-                    #if (time() - lclkt) > 10:
-                    #    click(rstloc)
-                    #    lclkt = time()
-                    if (time() - lmmvt) > 1:
-                        move(rstloc)
-                        lmmvt = time()
+                    move(rstloc)
+                    lmmvt = time()
+                    wt = randrange(1, 5)
         sleep(1)
 
 def attack(nenm, dste):
@@ -485,6 +492,8 @@ def attack(nenm, dste):
     and distance 'dste' away from character
     """
     global atkmode, laht, hp
+
+    logger.info("Attacking {} of distance {} away".format(nenm, dste))
 
     wt = detect.weapon.type
     dste = detect.recal(dste, reverse=True)
@@ -514,9 +523,6 @@ def hpen():
     """
     global boton, hp, energy, HPTHS, ENTHS
     global running
-
-    while hp is None or energy is None:
-        pass
 
     while boton:
         while running and boton:
@@ -548,6 +554,7 @@ def leaver():
             if pos is None:
                 pass
             else:
+                logger.info("Leave button detected: {}".format(pos))
                 click((pos[0] + 80, pos[1] + 25), hover=0.3)
             sleep(5)
         sleep(1)
@@ -567,6 +574,7 @@ def queuer():
             if cmp_prsd and hp > 0:
                 in_game = True
                 cmp_prsd = False
+                logger.info("In game")
 
             if not (img is None):
                 pbtn = detect.play_btn(img)
@@ -579,11 +587,12 @@ def queuer():
                             running = False
                             sleep(5)
                             print("\n")
-                            for i in range(45):
+                            for i in range(30):
                                 print("Resetting after {} seconds...".format(50 - i), end="\r")
                                 sleep(1)
                             print("\nRESETTING\n")
                             reset()
+                            logger.info("Resetting")
                             return
 
 
@@ -606,12 +615,14 @@ def dialoger():
                 continue
             rcndg = detect.reconnect_dialog(img)
             if not (rcndg is None):
+                logger.info("Clicking reconnect button {}".format(rcndg))
                 x, y, w, h = rcndg
                 ysbtn = x + (w // 3), y + h - (h // 5)
                 click(ysbtn)
             else:
                 okdg = detect.confirm_dialog(img)
                 if not (okdg is None):
+                    logger.info("Clicking ok button {}".format(okdg))
                     x, y, w, h = okdg
                     okbtn = x + (w // 2), y + h - (h // 4)
                     click(okbtn)
@@ -631,6 +642,7 @@ def mode_detective():
         while running and boton:
             if not (img is None):
                 gmr = detect.detect_mode_map(img)
+                logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
                 if not (gmr is None):
                     gmode = gmr
             if hp == 0:
@@ -675,6 +687,8 @@ def run():
     global boton, slfloc, img, loals, loenm, hp, energy
     global running, atkmode, gmode, gmode_to_smode, gmsg
 
+    logger.info("Starting threads")
+
     Thread(target=attacking).start()
     Thread(target=moving).start()
     Thread(target=hpen).start()
@@ -683,6 +697,9 @@ def run():
     Thread(target=dialoger).start()
     Thread(target=mode_detective).start()
     Thread(target=printer).start()
+
+    logger.info("Starting main loop")
+    logger.info("Game region: {}".format(GMREG))
 
     while boton:
         while running and boton:
@@ -749,6 +766,10 @@ def init():
     global GMREG, CENTER, slfloc, gmode, HPTHS, ENTHS
     global hwnd, win
 
+    logfn = len(listdir("logs"))
+    logging.basicConfig(filename="logs/prog_{}.log".format(logfn+1), 
+                        format='%(asctime)s %(message)s',
+                        level=logging.INFO)
     hwnd = find_window("Spider Tanks", exact=True)
     win = Window(hwnd)
     detect.new_win(win.size)
@@ -759,6 +780,7 @@ def init():
     slfloc = CENTER
     gmode = 1
 
+    logger.info("Starting bot")
     print("\n Initiating OCR... \n")
     detect.init_nr()
 
