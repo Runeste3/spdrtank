@@ -63,9 +63,9 @@ def compare(pos, temp, thresh=500, prnt=False):
 
     return result < thresh
 
-def look_for(temp, scene=None, thresh=0.8, tl=False):
+def look_for(temp, scene=None, thresh=0.8, tl=False, clr_match=False):
     """
-    Image, Image, float(0->0.1), bool -> tuple(int, int)
+    Image, Image, float(0->0.1), bool, bool -> tuple(int, int)
     Find a part of "scene" that matches "temp" and return it's 
         location in "scene" as (x, y)
     """
@@ -79,6 +79,12 @@ def look_for(temp, scene=None, thresh=0.8, tl=False):
     _, maxval, _, maxloc = cv.minMaxLoc(result)
     if maxval >= thresh:
         w, h = temp.size
+        if clr_match:
+            x, y = maxloc
+            imga, imgb = temp.img, scene.img[y:y+h, x:x+w]
+            if _cmse(imga, imgb) > 1500:
+                return None
+
         if not tl:
             pos = maxloc[0] + (w//2), maxloc[1] + (h//2)
         else:

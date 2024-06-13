@@ -35,6 +35,7 @@ loals = []
 loenm = []
 loob = []
 laht = None
+target = None
 gmp_to_gmn = {
     "":"Unknown",
     "SAHA":"Safe Haven",
@@ -53,7 +54,8 @@ gmode_to_smode = {
     1:"Team Deathmatch",
     2:"Poultry Pusher",
     3:"Chicken Chaser",
-    4:"King of the hill"
+    4:"King of the hill",
+    5:"Hold the flag"
 }
 
 def log(m):
@@ -387,6 +389,45 @@ def chkchs_move():
         else:
             basic_move()
 
+def flag_move():
+    """
+    None -> None
+    Do movement for hold the flag mode
+    """
+    global img, slfloc, target
+
+    res = detect.flag_loc_tp(img)
+    if not (res is None):
+        ftp, floc, ploc = res
+
+        if ftp == "enemy":
+            sfd = dist(slfloc, floc)
+            target = ploc, sfd
+            
+            if sfd > 400:
+                log("Moving toward flag: {}".format(floc))
+                move_toward(floc)
+            elif atkmode == 0:
+                log("Moving toward flag: {}".format(floc))
+                move_toward(ploc)
+            else:
+                random_move()
+        elif ftp == "self":
+            basic_move()
+        elif ftp == "ally":
+            sfd = dist(slfloc, floc)
+            if sfd < 800:
+                log("Moving toward flag: {}".format(floc))
+                move_toward(ploc)
+            else:
+                log("Moving toward flag: {}".format(floc))
+                move_toward(floc)
+        else:
+            log("Moving toward flag: {}".format(floc))
+            move_toward(floc)
+    else:
+        basic_move()
+
 def koh_move():
     """
     None -> None
@@ -424,6 +465,8 @@ def moving():
                 chkchs_move()
             elif gmode == 4:
                 koh_move()
+            elif gmode == 5:
+                flag_move()
             else:
                 tdm_move()
 
@@ -447,7 +490,7 @@ def attacking():
     Shoot the nearest enemy
     """
     global img, boton, slfloc, loals, loenm, atkmode
-    global running, hp, laht, xyd
+    global running, hp, laht, xyd, target
 
     lmmvt = time()
     MXRNG = 1000
@@ -465,6 +508,10 @@ def attacking():
                     sloenm = sort_near(ms.position, loenm, dsdfp=slfloc)
                 else:
                     sloenm = sort_near(slfloc, loenm)
+
+                if not (target is None):
+                    sloenm.insert(0, target)
+                    target = None
 
                 for nenm, dste in sloenm:
                     if dste < MXRNG and detect.open_fire_line(slfloc, nenm):

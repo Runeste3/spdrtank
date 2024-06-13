@@ -511,7 +511,7 @@ def locate_chicken(img):
         area = cv.contourArea(cnt) 
         if area > 500:
             x, y, w, _ = cv.boundingRect(cnt)
-            pos = (x + w, y + recal(150))
+            pos = (x + w, y + round(recal(150)))
             return pos
     
 BRLIM = read_img("src/modes/barrel.png", "grey")
@@ -612,6 +612,27 @@ def locate_chicks(img):
               o[0][1] + (o[0][3] - o[0][1])) for o in out]
     return lopos
 
+FLAGS = {
+    "dropped":read_img("src/modes/flag_drpd.png"),
+    "enemy"  :read_img("src/modes/flag_enmy.png"),
+    "self"   :read_img("src/modes/flag_self.png"),
+    "ally"   :read_img("src/modes/flag_ally.png"),
+}
+
+def flag_loc_tp(img):
+    """
+    Image -> str, Point | None
+    Given game image find the flag and
+    return its type and location on screen
+    if not found returns None
+    """
+    for tp, fim in FLAGS.items():
+        rfim = recal(fim, ogsz=1920, wonly=True)
+        floc = look_for(rfim, img, 0.8, clr_match=True)
+        if not (floc is None):
+            ploc = floc[0], floc[1] + round(recal(160, ogsz=1920, wonly=True))
+            return tp, floc, ploc
+
 def init_nr():
     """
     None -> None
@@ -645,6 +666,7 @@ GMSR = [
     ("POULTRY PUSHER",   2),
     ("CHICKEN CHASER",   3),
     ("KING OF THE HILL", 4),
+    ("HOLD THE FLAG",    5),
 ]
 
 def gms_to_mode(gms):
