@@ -1403,7 +1403,7 @@ def load_map_model(pm):
     global map_model
 
     if pm == "DECA":
-        map_model = Model("src/models/desert2.onnx", ["House-1",
+        map_model = Model("src/models/desert.onnx", ["House-1",
                                             "House-2",
                                             "House-3",
                                             "House-4",
