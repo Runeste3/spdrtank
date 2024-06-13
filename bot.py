@@ -671,7 +671,7 @@ def run():
                                                        detect.Weapon.FLAME,
                                                        detect.Weapon.SANTA,
                                                        detect.Weapon.SHOTGUN)
-                        else 1)
+                           else 1)
         sleep(1)
 
 def read_conf():
@@ -752,6 +752,7 @@ if __name__ == "__main__":
         add_kf("p", pause_run)
         add_kf("m", sr_cmptv)
         add_kf("z", save_conf)
+
         listener()
 
         print("")
