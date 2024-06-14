@@ -35,7 +35,7 @@ loals = []
 loenm = []
 loob = []
 laht = None
-target = None
+atarget = None
 gmp_to_gmn = {
     "":"Unknown",
     "SAHA":"Safe Haven",
@@ -394,15 +394,17 @@ def flag_move():
     None -> None
     Do movement for hold the flag mode
     """
-    global img, slfloc, target
+    global img, slfloc, atarget
 
     res = detect.flag_loc_tp(img)
+    atarget = None
+
     if not (res is None):
         ftp, floc, ploc = res
 
         if ftp == "enemy":
             sfd = dist(slfloc, floc)
-            target = ploc, sfd
+            atarget = ploc, sfd
             
             if sfd > 400:
                 log("Moving toward flag: {}".format(floc))
@@ -490,7 +492,7 @@ def attacking():
     Shoot the nearest enemy
     """
     global img, boton, slfloc, loals, loenm, atkmode
-    global running, hp, laht, xyd, target
+    global running, hp, laht, xyd, atarget
 
     lmmvt = time()
     MXRNG = 1000
@@ -509,9 +511,8 @@ def attacking():
                 else:
                     sloenm = sort_near(slfloc, loenm)
 
-                if not (target is None):
-                    sloenm.insert(0, target)
-                    target = None
+                if not (atarget is None):
+                    sloenm.insert(0, atarget)
 
                 for nenm, dste in sloenm:
                     if dste < MXRNG and detect.open_fire_line(slfloc, nenm):
@@ -667,11 +668,9 @@ def dialoger():
                 ysbtn = x + (w // 3), y + h - (h // 5)
                 click(ysbtn)
             else:
-                okdg = detect.confirm_dialog(img)
-                if not (okdg is None):
-                    logger.info("Clicking ok button {}".format(okdg))
-                    x, y, w, h = okdg
-                    okbtn = x + (w // 2), y + h - (h // 4)
+                okbtn = detect.confirm_dialog(img)
+                if not (okbtn is None):
+                    logger.info("Clicking ok button {}".format(okbtn))
                     click(okbtn)
 
             sleep(7)

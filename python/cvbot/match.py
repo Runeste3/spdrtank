@@ -39,10 +39,10 @@ def mse(imga, imgb):
     Image, Image -> float | None
     Return the mean squared difference between two images
     """
-    if imga.type != imgb.type:
+    if imga.type == "grey" or imgb.type == "grey":
+        return _mse(imga.grey(), imgb.grey()) 
+    elif imga.type != imgb.type:
         print("Mean squared difference cannot be calculated with images of different color types")
-    elif imga.type == "grey":
-        return _mse(imga.img, imgb.img) 
     else:
         return _cmse(imga.img, imgb.img)
 

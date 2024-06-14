@@ -14,7 +14,7 @@ from os import listdir
 
 #----------------------------------
 print("\n Initiating Neural Nets... \n")
-chk_model = Model("src/models/chick.onnx", ["chick",])
+chk_model = None
 map_model = None
 game_mode = None
 # ---------------- Classes ------------------
@@ -69,7 +69,7 @@ class Weapon:
         RAILGUN :2.5,
         SANTA   :0.0,
         TORTOISE:1.0,
-        TREX    :2.0,
+        TREX    :3.0,
         XBOW    :1.0,
         SHOTGUN :0.0
     }
@@ -250,8 +250,9 @@ def recal(n, ogsz=None, reverse=False, wonly=False):
         factor = (denom / ogsz)
 
     if type(n) is Image:
-        nsz = (round(n.size[0] * factor),) * 2
-        return n.resize(nsz)
+        nszw = round(n.size[0] * factor)
+        nszh = round(n.size[1] * factor)
+        return n.resize((nszw, nszh))
     else:
         if reverse:
             return n * factor
@@ -410,7 +411,7 @@ def box_valid(box):
             (4320 >= h >  0))
 
 
-def find_n_compare(ima, imb):
+def find_n_compare(ima, imb, sft_qual=30, mdf=1000):
     """
     Image -> rect | None
     Return rectangle if 'ima' is found in 'imb'
@@ -418,7 +419,7 @@ def find_n_compare(ima, imb):
     a reasonable difference
     else return None
     """
-    box = sift_find(ima, imb, 30)
+    box = sift_find(ima, imb, sft_qual)
 
     if not (box is None) and box_valid(box):
         x, y, w, h = box
@@ -426,10 +427,11 @@ def find_n_compare(ima, imb):
             cimb = imb.copy()
             cimb.img = imb.img[y:y+h, x:x+w]
             cimb.convert("grey")
+            #szdf = (abs(prod(ima.size) - (w * h)) / 1000)
             df = mse(ima.resize((w, h)), cimb)
-            if df < 1000:
+            if df < mdf:
                 return (x, y, w, h)
-        except:
+        except Exception as e:
             pass
 
 LVIM = read_img("src/leave/btn.png", "grey")
@@ -450,8 +452,8 @@ def end_game(img):
 PLYIM = read_img("src/queue/plybtn.png",   "grey")
 CMPIM = read_img("src/queue/cmptvbtn.png", "grey")
 RCNIM = read_img("src/queue/recon.png",    "grey")
-CNFIM = read_img("src/queue/confail.png",  "grey")
 IDLIM = read_img("src/queue/idle.png",     "grey")
+CNFIM = read_img("src/queue/okbtn.png")
 
 def play_btn(img):
     """
@@ -487,15 +489,13 @@ def reconnect_dialog(img):
 
 def confirm_dialog(img):
     """
-    Image -> Rect | None
-    Return the box of dialogs with ok button
-    in them, if not found returns None
+    Image -> Point | None
+    Return the point of ok button
+    if not found returns None
     """
-    rect = find_n_compare(CNFIM, img)
-    if rect is None:
-        rect = find_n_compare(IDLIM, img)
+    ncnfim = recal(CNFIM, ogsz=1920, wonly=True)
 
-    return rect
+    return look_for(ncnfim, img)
 
 def locate_chicken(img):
     """
@@ -607,10 +607,14 @@ def locate_chicks(img):
     and return all the chicks on screen
     in a list
     """
-    out = chk_model.detect(img, 0.4) # list((box, scr, name))
-    lopos = [(o[0][0] + (o[0][2] - o[0][0]), 
-              o[0][1] + (o[0][3] - o[0][1])) for o in out]
-    return lopos
+    if not (chk_model is None):
+        out = chk_model.detect(img, 0.4) # list((box, scr, name))
+        lopos = [(o[0][0] + (o[0][2] - o[0][0]), 
+                o[0][1] + (o[0][3] - o[0][1])) for o in out]
+        return lopos
+    else:
+        load_chick_model()
+        return []
 
 FLAGS = {
     "dropped":read_img("src/modes/flag_drpd.png"),
@@ -772,7 +776,27 @@ def size_check(box, wh):
 MNX, MNY = 20, 45
 MXX, MXY = rltv_szu[0] - 5, rltv_szu[1] - 5
 
-def cut_tri(loc, vmap, box, szt, igm=False, flipx=False, flipy=False):
+def cut_rec(*args, **kwargs):
+    """
+    str, bi np im, box, Point, bool -> bi np im
+    Remove a rectangle from either:
+    - top-left
+    - top-right
+    - bottom-right
+    - bottom-left
+    corner of size 'szt',
+    Only removes the rectangle if its within the image,
+    this is ignored if 'igm' is True
+    """
+    return cut_shape(*args, **kwargs, shape='rec')
+
+def cut_cir(*args, **kwargs):
+    """
+    Cut a Circle
+    """
+    return cut_shape(*args, **kwargs, shape='cir')
+
+def cut_tri(*args, **kwargs):
     """
     str, bi np im, box, tuple(int, int), bool, bool -> bi np im
     Remove a triangle from either:
@@ -783,44 +807,86 @@ def cut_tri(loc, vmap, box, szt, igm=False, flipx=False, flipy=False):
     of the given 'vmap' binary image
     of size 'sz' from the box 'box'
     """
-    szx, szy = szt
+    return cut_shape(*args, **kwargs, shape='tri')
+
+def cut_shape(loc, vmap, box, szt, igm=False, flipx=False, flipy=False, shape='tri'):
+
+    if not (shape in ('tri', 'rec', 'cir')):
+        print("[ERROR] SHAPE {} NOT SUPPORTED".format(shape))
+        return vmap
 
     x1, y1, x2, y2 = box
     bw, bh = x2 - x1, y2 - y1
-    if szx > bw:
-        szx = bw
-    if szy > bh:
-        szy = bh
 
-    if loc == "tl":
-        if not igm and (x1 <= MNX or y1 <= MNY):
-            return vmap
-        p1 = (x1, y1)
-        p2 = (x1 + szx, y1 if not flipy else y1 + szy)
-        p3 = (x1 if not flipx else x1 + szx, y1 + szy)
-    elif loc == "tr":
-        if not igm and (x2 >= MXX or y1 <= MNY):
-            return vmap
-        p1 = (x2, y1)
-        p2 = (x2 - szx, y1 if not flipy else y1 + szy)
-        p3 = (x2 if not flipx else x2 - szx, y1 + szy)
-    elif loc == "bl":
-        if not igm and (x1 < MNX or y2 > MXY):
-            return vmap
-        p1 = (x1, y2)
-        p2 = (x1 + szx, y2 if not flipy else y2 - szy)
-        p3 = (x1 if not flipx else x1 + szx, y2 - szy)
-    elif loc == "br":
-        if not igm and (x2 >= MXX or y2 >= MXY):
-            return vmap
-        p1 = (x2, y2)
-        p2 = (x2 - szx, y2 if not flipy else y2 - szy)
-        p3 = (x2 if not flipx else x2 - szx, y2 - szy)
+    if shape == 'cir':
+        r, ofst = szt
+        if loc == "l":
+            cx = x1 + ofst
+            cy = y1 + (bh // 2)
+        elif loc == 't':
+            cx = x1 + (bw // 2)
+            cy = y1 + ofst
+        elif loc == 'r':
+            cx = x2 - ofst
+            cy = y1 + (bh // 2)
+        elif loc == 'b':
+            cx = x1 + (bw // 2)
+            cy = y2 - ofst
+
+        vmap = cv.circle(vmap, (cx, cy), r, 0, -1)
+
     else:
-        return vmap
+        szx, szy = szt
+        if szx > bw:
+            szx = bw
+        if szy > bh:
+            szy = bh
 
-    tri = np.array((p1, p2, p3))
-    vmap = cv.drawContours(vmap, [tri], 0, 0, -1)
+        if loc == "tl":
+            if not igm and (x1 <= MNX or y1 <= MNY):
+                return vmap
+            p1 = (x1, y1)
+            if shape == 'tri':
+                p2 = (x1 + szx, y1 if not flipy else y1 + szy)
+                p3 = (x1 if not flipx else x1 + szx, y1 + szy)
+            elif shape == 'rec':
+                p2 = (x1 + szx, y1 + szy)
+        elif loc == "tr":
+            if not igm and (x2 >= MXX or y1 <= MNY):
+                return vmap
+            p1 = (x2, y1)
+            if shape == "tri":
+                p2 = (x2 - szx, y1 if not flipy else y1 + szy)
+                p3 = (x2 if not flipx else x2 - szx, y1 + szy)
+            elif shape == 'rec':
+                p2 = (x2 - szx, y1 + szy)
+        elif loc == "bl":
+            if not igm and (x1 < MNX or y2 > MXY):
+                return vmap
+            p1 = (x1, y2)
+            if shape == 'tri':
+                p2 = (x1 + szx, y2 if not flipy else y2 - szy)
+                p3 = (x1 if not flipx else x1 + szx, y2 - szy)
+            elif shape == 'rec':
+                p2 = (x1 + szx, y2 - szy)
+        elif loc == "br":
+            if not igm and (x2 >= MXX or y2 >= MXY):
+                return vmap
+            p1 = (x2, y2)
+            if shape == 'tri':
+                p2 = (x2 - szx, y2 if not flipy else y2 - szy)
+                p3 = (x2 if not flipx else x2 - szx, y2 - szy)
+            elif shape == 'rec':
+                p2 = (x2 - szx, y2 - szy)
+        else:
+            return vmap
+
+        if shape == 'tri':
+            tri = np.array((p1, p2, p3))
+            vmap = cv.drawContours(vmap, [tri], 0, 0, -1)
+        elif shape == 'rec':
+            vmap = cv.rectangle(vmap, p1, p2, 0, -1)
+
     return vmap
 
 def open_fire_line(sp, ep):
@@ -920,44 +986,59 @@ def lf_detail_dc(lfmap):
                     lfmap[y2-60:y2+170, x1] = 255
 
 
+
         if "House" in name:
             lfmap[y1:y2, x1:x2] = 255
         elif "Obstacle" in name and name[-1] in ("1", "2", "5", "6"):
             lfmap[y1:y2, x1:x2] = 255
 
+        # After-efects
         if name == "Obstacle-1":
-            lfmap = cut_tri("tr", lfmap, (x1, y1, x2, y2), (130, 130))
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (70 , 115))
+            lfmap = cut_rec("tr", lfmap, (x1, y1, x2, y2), (80, 80), igm=True)
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (40 , 115), igm=True)
         elif name == "Obstacle-2":
-            lfmap = cut_tri("bl", lfmap, (x1, y1, x2, y2), (130, 130))
-            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (70 , 115))
+            lfmap = cut_rec("bl", lfmap, (x1, y1, x2, y2), (80, 80), igm=True)
+            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (40 , 115), igm=True)
+        elif name == "House-1":
+            lfmap = cut_rec("tl", lfmap, (x1, y1, x2, y2), (400,  50) , igm=True)
+        elif name == "House-2":
+            lfmap[y2:, x1:x2] = 255
         elif name == "House-3":
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (50, 400))
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (200, 200))
-            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (150, 150))
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (50,  400) , igm=True)
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (200, 200), igm=True)
+            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (150, 150), igm=True)
+            lfmap = cut_rec("tl", lfmap, (x1, y1, x2, y2), (500, 50), igm=True)
         elif name == "House-4":
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (160, 220))
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (160, 220))
-            lfmap = cut_tri("tr", lfmap, (x1, y1, x2, y2), (150, 150))
-            lfmap = cut_tri("bl", lfmap, (x1, y1, x2, y2), (150, 150))
-            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (150, 150))
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (300, 220), igm=True)
+            lfmap = cut_tri("bl", lfmap, (x1, y1, x2, y2), (150, 150), igm=True)
+            #lfmap = cut_tri("tr", lfmap, (x1, y1, x2, y2), (150, 150))
+            #lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (150, 150))
+            lfmap = cut_rec("tr", lfmap, (x1, y1, x2, y2), (120, 550), igm=True)
+            lfmap = cut_rec("tr", lfmap, (x1, y1, x2, y2), (300, 100), igm=True)
         elif name == "House-5":
-            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (150, 100))
+            lfmap[:y2, x1:x2] = 255
+            lfmap = cut_rec("br", lfmap, (x1, y1, x2, y2), (180, 80), igm=True)
         elif name == "House-6":
-            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (200, 50), igm=True)
+            lfmap[:y2, x1:x2] = 255
+            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (200, 50),  igm=True)
             lfmap = cut_tri("bl", lfmap, (x1, y1, x2, y2), (100, 150), igm=True)
         elif name == "House-7":
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (200, 250))
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (200, 250), igm=True)
             lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (150, 150), igm=True)
+            lfmap = cut_rec("tl", lfmap, (x1, y1, x2, y2), (500, 50), igm=True)
         elif name == "House-8":
-            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (100, 50))
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (50, 50))
+            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (100, 50) , igm=True) 
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (50, 50)  , igm=True)
+            lfmap = cut_tri("tr", lfmap, (x1, y1, x2, y2), (400, 50)  , igm=True)
         elif name == "House-9":
-            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (200, 200))
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (100, 220))
-            lfmap = cut_tri("tr", lfmap, (x1, y1, x2, y2), (200, 200))
+            lfmap = cut_tri("br", lfmap, (x1, y1, x2, y2), (200, 200), igm=True)
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (100, 220), igm=True)
+            lfmap = cut_tri("tr", lfmap, (x1, y1, x2, y2), (200, 200), igm=True)
+            lfmap = cut_rec("br", lfmap, (x1, y1, x2, y2), (500, 50),  igm=True)
         elif name == "House-10":
-            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (300, 200))
+            lfmap[y2:, x1:x2] = 255
+            lfmap = cut_tri("tl", lfmap, (x1, y1, x2, y2), (300, 200), igm=True)
+            lfmap = cut_rec("tl", lfmap, (x1, y1, x2, y2), (500, 50), igm=True)
 
     return lfmap
 
@@ -1030,6 +1111,10 @@ def detail_vault(vmap):
             x1 -= 50
             if x1 < 0:
                 x1 = 0
+        if name == "Wall-18":
+            y1 -= 50
+            if y1 < 0:
+                y1 = 0
         # PITS
         if name == "Pit-1":
             x2 += 100
@@ -1070,20 +1155,26 @@ def detail_vault(vmap):
             vmap = cut_tri("br", vmap, box, (100, 100), igm=True)
         elif name == "Wall-4":
             vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
-            vmap = cut_tri("br", vmap, box, (200, 380), igm=True, flipy=True)
-            vmap = cut_tri("tr", vmap, box, (250, 600), igm=True, flipy=True)
+            #vmap = cut_tri("br", vmap, box, (200, 380), igm=True, flipy=True)
+            #vmap = cut_tri("tr", vmap, box, (250, 600), igm=True, flipy=True)
+            vmap = cut_cir("r",  vmap, box, (150,  50), igm=True)
+            vmap = cut_rec("br", vmap, box, (120, 150), igm=True)
         elif name == "Wall-6":
             vmap = cut_tri("bl", vmap, box, (200, 300), igm=True)
             vmap = cut_tri("tr", vmap, box, (100, 100), igm=True)
         elif name == "Wall-7":
-            vmap = cut_tri("br", vmap, box, (270, 250), igm=True, flipx=True)
-            vmap = cut_tri("br", vmap, box, (500, 150), igm=True, flipx=True)
-            vmap = cut_tri("bl", vmap, box, (250, 200), igm=True)
+            vmap = cut_cir("b",  vmap, box, (150,  50), igm=True)
+            vmap = cut_rec("bl", vmap, box, (150, 130), igm=True)
+            #vmap = cut_tri("br", vmap, box, (270, 250), igm=True, flipx=True)
+            #vmap = cut_tri("br", vmap, box, (500, 150), igm=True, flipx=True)
+            #vmap = cut_tri("bl", vmap, box, (250, 200), igm=True)
             vmap = cut_tri("tr", vmap, box, (150, 150), igm=True)
             vmap = cut_tri("tl", vmap, box, (150, 150), igm=True)
         elif name == "Wall-9":
-            vmap = cut_tri("tl", vmap, box, (150, 300), igm=True, flipy=True)
-            vmap = cut_tri("tl", vmap, box, (150, 350), igm=True)
+            #vmap = cut_tri("tl", vmap, box, (150, 300), igm=True, flipy=True)
+            #vmap = cut_tri("tl", vmap, box, (150, 350), igm=True)
+            vmap = cut_cir("l",  vmap, box, (120, 100), igm=True)
+            vmap = cut_rec("tl", vmap, box, (110, 200), igm=True)
             vmap = cut_tri("tr", vmap, box, ( 50,  50), igm=True)
             vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
         elif name == "Wall-12":
@@ -1091,8 +1182,10 @@ def detail_vault(vmap):
         elif name == "Wall-15":
             vmap = cut_tri("bl", vmap, box, (100, 100), igm=True)
             vmap = cut_tri("br", vmap, box, ( 50,  50), igm=True)
-            vmap = cut_tri("tr", vmap, box, (350, 150), igm=True, flipx=True)
-            vmap = cut_tri("tr", vmap, box, (450, 150))
+            vmap = cut_cir("t",  vmap, box, (150,  50), igm=True)
+            vmap = cut_rec("tr", vmap, box, (150, 110), igm=True)
+            #vmap = cut_tri("tr", vmap, box, (350, 150), igm=True, flipx=True)
+            #vmap = cut_tri("tr", vmap, box, (450, 100))
         elif name == "Wall-17":
             vmap = cut_tri("tr", vmap, box, (150, 200), igm=True)
 
@@ -1113,20 +1206,21 @@ def detail_vault(vmap):
         elif name == "Pit-5":
             vmap = cut_tri("tr", vmap, box, (50, 500) , igm=True)
             vmap = cut_tri("br", vmap, box, (150, 150), igm=True)
-            vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
+            vmap = cut_tri("bl", vmap, box, (200, 200), igm=True)
         elif name == "Pit-6":
             vmap = cut_tri("tr", vmap, box, (250, 100), igm=True)
-            vmap = cut_tri("tl", vmap, box, (50, 250) , igm=True)
+            vmap = cut_tri("tl", vmap, box, (20, 250) , igm=True)
         elif name == "Pit-7":
             vmap = cut_tri("tl", vmap, box, (100, 100), igm=True)
             vmap = cut_tri("bl", vmap, box, (150, 150), igm=True)
             vmap = cut_tri("br", vmap, box, (100, 400), igm=True, flipy=True)
             vmap = cut_tri("tr", vmap, box, (100, 300), igm=True, flipy=True)
         elif name == "Pit-8":
-            vmap = cut_tri("tr", vmap, box, (300, 50) , igm=True)
+            vmap = cut_tri("tr", vmap, box, (300, 20) , igm=True)
             vmap = cut_tri("br", vmap, box, (100, 300), igm=True)
     
-    return vmap
+    kernel = np.ones((5, 5), np.uint8)
+    return cv.dilate(vmap, kernel, iterations=3) 
 
 def detail_dc(vmap):
     """
@@ -1136,55 +1230,89 @@ def detail_dc(vmap):
     global loob
 
     bsx, bex = None, None
+    h, w = vmap.shape[:2]
     lobyr = []
     for ((x1, y1, x2, y2), _, name) in loob:
         if "House" in name or "Obstacle" in name:
             # Pre-efects
+            if name == "Obstacle-4":
+                x1 -= 300
+                x2 += 20
+                y1 -= 20
+                if x1 < 0:
+                    x1 = 0
+                if x2 > w:
+                    x2 = w
+                if y1 < 0:
+                    y1 = 0
+                if y2 > h:
+                    y2 = h
+            elif name == "Obstacle-8":
+                y2 += 20
+                x1 -= 20
+                x2 += 300
+                if y2 > h:
+                    y2 = h
+                if x1 < 0:
+                    x1 = 0
+                if x2 > w:
+                    x2 = w
+            elif name == "House-7":
+                y2 += 50
+                if y2 > h:
+                    y2 = h
+
             vmap[y1:y2, x1:x2] = 255
 
             # After-efects
             if name == "Obstacle-1":
-                vmap = cut_tri("tr", vmap, (x1, y1, x2, y2), (130, 130))
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (70 , 115))
+                vmap = cut_rec("tr", vmap, (x1, y1, x2, y2), (80, 80), igm=True)
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (40 , 115), igm=True)
             elif name == "Obstacle-2":
-                vmap = cut_tri("bl", vmap, (x1, y1, x2, y2), (130, 130))
-                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (70 , 115))
+                vmap = cut_rec("bl", vmap, (x1, y1, x2, y2), (80, 80), igm=True)
+                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (40 , 115), igm=True)
+            elif name == "House-1":
+                vmap = cut_rec("tl", vmap, (x1, y1, x2, y2), (400,  50) , igm=True)
             elif name == "House-2":
                 vmap[y2:, x1:x2] = 255
             elif name == "House-3":
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (50, 400))
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (200, 200))
-                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (150, 150))
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (50,  400) , igm=True)
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (200, 200), igm=True)
+                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (150, 150), igm=True)
+                vmap = cut_rec("tl", vmap, (x1, y1, x2, y2), (500, 50), igm=True)
             elif name == "House-4":
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (160, 220))
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (160, 220))
-                vmap = cut_tri("tr", vmap, (x1, y1, x2, y2), (150, 150))
-                vmap = cut_tri("bl", vmap, (x1, y1, x2, y2), (150, 150))
-                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (150, 150))
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (300, 220), igm=True)
+                vmap = cut_tri("bl", vmap, (x1, y1, x2, y2), (150, 150), igm=True)
+                #vmap = cut_tri("tr", vmap, (x1, y1, x2, y2), (150, 150))
+                #vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (150, 150))
+                vmap = cut_rec("tr", vmap, (x1, y1, x2, y2), (120, 550), igm=True)
+                vmap = cut_rec("tr", vmap, (x1, y1, x2, y2), (300, 100), igm=True)
             elif name == "House-5":
                 vmap[:y2, x1:x2] = 255
-                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (150, 100))
+                vmap = cut_rec("br", vmap, (x1, y1, x2, y2), (180, 80), igm=True)
             elif name == "House-6":
                 vmap[:y2, x1:x2] = 255
-                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (200, 50), igm=True)
+                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (200, 50),  igm=True)
                 vmap = cut_tri("bl", vmap, (x1, y1, x2, y2), (100, 150), igm=True)
             elif name == "House-7":
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (200, 250))
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (200, 250), igm=True)
                 vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (150, 150), igm=True)
+                vmap = cut_rec("tl", vmap, (x1, y1, x2, y2), (500, 50), igm=True)
             elif name == "House-8":
-                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (100, 50))
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (50, 50))
+                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (100, 50) , igm=True)
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (50, 50)  , igm=True)
+                vmap = cut_tri("tr", vmap, (x1, y1, x2, y2), (400, 50)  , igm=True)
             elif name == "House-9":
-                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (200, 200))
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (100, 220))
-                vmap = cut_tri("tr", vmap, (x1, y1, x2, y2), (200, 200))
+                vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (200, 200), igm=True)
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (100, 220), igm=True)
+                vmap = cut_tri("tr", vmap, (x1, y1, x2, y2), (200, 200), igm=True)
+                vmap = cut_rec("br", vmap, (x1, y1, x2, y2), (500, 50),  igm=True)
             elif name == "House-10":
                 vmap[y2:, x1:x2] = 255
-                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (300, 200))
+                vmap = cut_tri("tl", vmap, (x1, y1, x2, y2), (300, 200), igm=True)
+                vmap = cut_rec("tl", vmap, (x1, y1, x2, y2), (500, 50), igm=True)
 
         elif "Bridge" in name:
-            if name == "Bridge-3":
-                x2 += 100
             lobyr.append((y1, y2))
             if bsx is None:
                 bsx = x1
@@ -1203,7 +1331,8 @@ def detail_dc(vmap):
             ly = y2
         vmap[ly:, bsx:bex] = 255
 
-    return vmap
+    kernel = np.ones((5, 5), np.uint8)
+    return cv.dilate(vmap, kernel, iterations=3) 
 
 def mask_detail(vmap):
     global loob
@@ -1388,11 +1517,22 @@ def detect_mode_map(img):
         if cur_map != prsd_map:
             print("\n Loading map model... \n")
             load_map_model(prsd_map)
+        if game_mode == 3:
+            print("\n Loading chicks model... \n")
+            load_chick_model()
         cur_map = prsd_map
     else:
         prsd_mode = None
     
     return prsd_mode
+
+def load_chick_model():
+    """
+    None -> None
+    Load the chick model to the global variable
+    """
+    global chk_model
+    chk_model = Model("src/models/chick.onnx", ["chick",])
 
 def load_map_model(pm):
     """
@@ -1465,6 +1605,8 @@ def map_objs(img):
 
     if map_model is None:
         return []
+    elif cur_map == "DECA":
+        return map_model.detect(img, 0.4)
     else:
         return map_model.detect(img, 0.5)
 
@@ -1760,6 +1902,12 @@ def direction(img, sp, ep):
     loob = map_objs(img) 
 
     vmap = make_vmap(img)
+    # Testing, TODO: Remove or Comment
+    #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_CROSS, 50, 5)
+    #cv.imshow("vmap", cv.resize(vmap, (1066, 600)))
+    #cv.waitKey(1)
+    #return
+    # ---------------------------------
     vmap, sp, ep = shrink_vmap(vmap, sp, ep)
     # Testing, TODO: Remove
     #img.img = np.pad(img.img, ((0, 0), (0, 0), (0, 1)))
@@ -1792,7 +1940,7 @@ def direction(img, sp, ep):
     #vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_DIAMOND, 2, 1)
     #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
     #vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
-    #cv.imshow("vmap",  cv.resize( vmap, (800, 600)))
+    #cv.imshow("vmap",  cv.resize( vmap, (1066, 600)))
     #cv.waitKey(1)
     return dr
 
@@ -1954,13 +2102,25 @@ if __name__ == "__main__":
     win.repos(0, 0)
     new_win(win.size)
     reg = 0, 0, win.size[0], win.size[1]
-    __record(reg)
+
+    #__record(reg)
+    #quit()
+    img = get_region(reg)
+    rect = confirm_dialog(img)
+    print("CONFIRM DIALOG RETURNED: {}".format(rect))
+    if not (rect is None):
+        pos = rect[0] + 5, rect[1] + 5
+        mouse.click(pos)
     quit()
+    center = reg[2] // 2, reg[3] // 2
+    cur_map = "VAVA"
+    load_map_model(cur_map)
+    while True:
+        img = get_region(reg)
+        direction(img, center, center)
     #init_ocr(['en'])
     #img = read_img("test.png")
     #recognize_map(img)
-    #cur_map = "VAVA"
-    #load_map_model("VAVA")
     #img = read_img("test.png")
     #direction(img, (0, 0), (0, 0))
     #quit()
