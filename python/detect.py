@@ -495,7 +495,7 @@ def confirm_dialog(img):
     """
     ncnfim = recal(CNFIM, ogsz=1920, wonly=True)
 
-    return look_for(ncnfim, img)
+    return look_for(ncnfim, img, 0.93)
 
 def locate_chicken(img):
     """
