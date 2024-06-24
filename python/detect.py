@@ -51,7 +51,7 @@ class Weapon:
     TPTR = {
         NORMAL  :700,
         CARVER  :300,
-        FLAME   :200,
+        FLAME   :250,
         GATTLING:700,
         RAILGUN :700,
         SANTA   :700,
@@ -199,19 +199,21 @@ class Weapon:
                 self.type = Weapon.NORMAL
 
 # ------------- Constants -------------------
-ENMCLR = (99,   98, 255, 255)
-ALYCLR = (255, 216,  98, 255)
-SLFCLR = (115, 237,  69, 255)
-INDCLR = (240, 183,  12, 255), (245, 190, 15, 255)
-CHKNCLR = (255, 169, 47, 255)
-HPCLR  = ((31,  252, 246, 255),
-          (32,  255, 249, 255))
-ENRCLR = ((1,   245, 255, 255),
-          (1,   249, 255, 255))
-OG_RZ = prod((1600, 900))
-OGMSZ = prod((1920, 1080))
-weapon = Weapon(None) 
-rltv_sz = OG_RZ
+VICTORY  = 1
+DEFEAT   = 0
+ENMCLR   = (99,   98, 255, 255)
+ALYCLR   = (255, 216,  98, 255)
+SLFCLR   = (115, 237,  69, 255)
+INDCLR   = (240, 183,  12, 255), (245, 190, 15, 255)
+CHKNCLR  = (255, 169, 47, 255)
+HPCLR    = ((31,  252, 246, 255),
+            (32,  255, 249, 255))
+ENRCLR   = ((1,   245, 255, 255),
+            (1,   249, 255, 255))
+OG_RZ    = prod((1600, 900))
+OGMSZ    = prod((1920, 1080))
+weapon   = Weapon(None) 
+rltv_sz  = OG_RZ
 rltv_szu = 1600, 900
 # TEST CONSTANTS
 #CRSCLR = (0, 0, 255, 255)
@@ -453,7 +455,10 @@ PLYIM = read_img("src/queue/plybtn.png",   "grey")
 CMPIM = read_img("src/queue/cmptvbtn.png", "grey")
 RCNIM = read_img("src/queue/recon.png",    "grey")
 IDLIM = read_img("src/queue/idle.png",     "grey")
-CNFIM = read_img("src/queue/okbtn.png")
+CNFIM = read_img("src/queue/okbtn.png",    "grey")
+RTRIM = read_img("src/queue/rtrbtn.png",   "grey")
+VCTIM = read_img("src/queue/vctbnr.png",   "grey")
+DFTIM = read_img("src/queue/dftbnr.png",   "grey")
 
 def play_btn(img):
     """
@@ -494,8 +499,33 @@ def confirm_dialog(img):
     if not found returns None
     """
     ncnfim = recal(CNFIM, ogsz=1920, wonly=True)
-
     return look_for(ncnfim, img, 0.93)
+
+def retry_button(img):
+    """
+    Image -> Point | None
+    Return the middle point of 'retry' button
+    if not found return None
+    """
+    res = recal(RTRIM, ogsz=1920, wonly=True)
+    return look_for(res, img, 0.93)
+
+def victory_defeat(img):
+    """
+    Image -> Game Result | None
+    Return 'VICTORY' if the victory banner is visible
+    or 'DEFEAT' if the defeat banner is visible
+    if either of which is not visible return None
+    """
+    rvim = recal(VCTIM, ogsz=1920, wonly=True)
+    vct  = look_for(rvim, img, 0.8)
+    if vct:
+        return VICTORY
+    else:
+        rdim = recal(DFTIM, ogsz=1920, wonly=True)
+        dft = look_for(rdim, img, 0.8)
+        if dft:
+            return DEFEAT
 
 def locate_chicken(img):
     """
@@ -757,11 +787,11 @@ def hill(img):
     
 def __record(reg):
     sleep(3)
-    i = 782
+    i = 0 
 
     while True:
         img = get_region(reg)
-        save_img(img, "__test/_pathing/Vault/{}.png".format(i))
+        save_img(img, "__test/_pathing/Shrine/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -1067,7 +1097,7 @@ def lf_detail(lfmap):
         lfmap = lf_detail_dc(lfmap)
     elif cur_map == "VAVA":
         lfmap = lf_detail_vault(lfmap)
-    elif cur_map == "SAHA":
+    elif cur_map in ("SAHA", "SHSH"):
         lfmap = lf_mask_detail(lfmap)
 
     return lfmap
@@ -1128,7 +1158,7 @@ def detail_vault(vmap):
                 y2 = h
         elif name == "Pit-5":
             x1 -= 50
-            x2 += 50
+            x2 += 100
             if x1 < 0:
                 x1 = 0
             if x2 > h:
@@ -1355,7 +1385,7 @@ def detail(vmap):
         return detail_dc(vmap)
     elif cur_map == "VAVA":
         return detail_vault(vmap)
-    elif cur_map == "SAHA":
+    elif cur_map in ("SAHA", "SHSH"):
         return mask_detail(vmap)
     
     return vmap
@@ -1506,6 +1536,8 @@ def detect_mode_map(img):
         mds, mps = result.split(" ON ")
     elif " OM " in result:
         mds, mps = result.split(" OM ")
+    elif " O " in result:
+        mds, mps = result.split(" O ")
     else:
         mds, mps = "", ""
     
@@ -1595,6 +1627,8 @@ def load_map_model(pm):
                                                     ])
     elif pm == "SAHA":
         map_model = Model("src/models/haven.pt")
+    elif pm == "SHSH":
+        map_model = Model("src/models/shrine.pt")
 
 def map_objs(img):
     """
@@ -2103,8 +2137,9 @@ if __name__ == "__main__":
     new_win(win.size)
     reg = 0, 0, win.size[0], win.size[1]
 
-    #__record(reg)
-    #quit()
+    __record(reg)
+    quit()
+
     img = get_region(reg)
     rect = confirm_dialog(img)
     print("CONFIRM DIALOG RETURNED: {}".format(rect))

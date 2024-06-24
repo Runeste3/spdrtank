@@ -22,6 +22,7 @@ import traceback
 logger = logging.getLogger(__name__)
 
 DQSZ = 20
+bad_play = False
 mv_far = False
 boton = True
 running = True
@@ -397,7 +398,6 @@ def flag_move():
     global img, slfloc, atarget
 
     res = detect.flag_loc_tp(img)
-    atarget = None
 
     if not (res is None):
         ftp, floc, ploc = res
@@ -451,7 +451,7 @@ def moving():
     Move to the nearest ally if found
     """
     global img, boton, slfloc, atkmode, loenm, loals
-    global running, gmode
+    global running, gmode, bad_play
 
     while boton:
         if img is None:
@@ -461,7 +461,9 @@ def moving():
         while running and boton:
             ntrlsd = True
             sleep(0.3)
-            if gmode == 2:
+            if bad_play:
+                basic_move()
+            elif gmode == 2:
                 pltry_move()
             elif gmode == 3:
                 chkchs_move()
@@ -486,16 +488,25 @@ def sort_near(p, lop, dsdfp=None):
     """
     return list(sorted(map(lambda x: (x, dist(x, p if dsdfp is None else dsdfp)), lop), key=lambda x: x[1]))
 
+def release_mouse():
+    """
+    None -> None
+    Release mouse click/control
+    this function is mainly used to stop attacking
+    """
+    global laht
+    ms.release(msbtn.left)
+    laht = None
+
 def attacking():
     """
     None -> None
     Shoot the nearest enemy
     """
     global img, boton, slfloc, loals, loenm, atkmode
-    global running, hp, laht, xyd, atarget
+    global running, hp, laht, xyd, atarget, bad_play
 
     lmmvt = time()
-    MXRNG = 1000
     wt = 5
 
     while boton:
@@ -505,7 +516,12 @@ def attacking():
                                len(loenm) == 0 and
                                hp < 1):
                 continue
-            if loenm:
+            if bad_play:
+                chnc = uniform(0.0, 1.0)
+                if chnc > 0.95 and loenm:
+                    click(loenm[0])
+                    sleep(1)
+            elif loenm:
                 if atkmode == 1:
                     sloenm = sort_near(ms.position, loenm, dsdfp=slfloc)
                 else:
@@ -513,14 +529,20 @@ def attacking():
 
                 if not (atarget is None):
                     sloenm.insert(0, atarget)
+                    atarget = None
+
+                wt = detect.weapon.type
 
                 for nenm, dste in sloenm:
-                    if dste < MXRNG and detect.open_fire_line(slfloc, nenm):
-                        attack(nenm, dste)
+                    dste = detect.recal(dste, reverse=True)
+                    if (dste < detect.Weapon.TPTR[wt] and 
+                        (atkmode == 0 or detect.open_fire_line(slfloc, nenm))):
+                        attack(nenm, dste, wt)
                         break
+                else:
+                    release_mouse()
             else:
-                ms.release(msbtn.left)
-                laht = None
+                release_mouse()
                 if (time() - lmmvt) > wt:
                     rstloc = (slfloc[0] + (randrange(50, CENTER[0] // 2) * xyd[0]),
                             slfloc[1] + (randrange(50, CENTER[1] // 2) * xyd[1]))
@@ -533,9 +555,9 @@ def attacking():
                     wt = randrange(1, 5)
         sleep(1)
 
-def attack(nenm, dste):
+def attack(nenm, dste, wt):
     """
-    Point, int -> None
+    Point, int, Weapon Type -> None
     Attack the enemy at position 'nenm' on screen
     and distance 'dste' away from character
     """
@@ -543,12 +565,6 @@ def attack(nenm, dste):
 
     logger.info("Attacking {} of distance {} away".format(nenm, dste))
 
-    wt = detect.weapon.type
-    dste = detect.recal(dste, reverse=True)
-
-    if dste > detect.Weapon.TPTR[wt]:
-        return
-    
     ht = detect.Weapon.hold_time(wt, dste)
 
     if ht < 0.5:
@@ -561,8 +577,7 @@ def attack(nenm, dste):
             ms.press(msbtn.left)
             laht = time()
         elif (time() - laht) > ht:
-            ms.release(msbtn.left)
-            laht = None
+            release_mouse()
 
 def hpen():
     """
@@ -661,19 +676,59 @@ def dialoger():
             if img is None:
                 sleep(1)
                 continue
+            btnclkd = False
             rcndg = detect.reconnect_dialog(img)
             if not (rcndg is None):
                 logger.info("Clicking reconnect button {}".format(rcndg))
                 x, y, w, h = rcndg
                 ysbtn = x + (w // 3), y + h - (h // 5)
                 click(ysbtn)
+                btnclkd = True
             else:
                 okbtn = detect.confirm_dialog(img)
                 if not (okbtn is None):
                     logger.info("Clicking ok button {}".format(okbtn))
                     click(okbtn)
+                    btnclkd = True
+                else:
+                    rtrbtn = detect.retry_button(img)
+                    if not (rtrbtn is None):
+                        logger.info("Clicking retry button {}".format(rtrbtn))
+                        click(rtrbtn)
+                        btnclkd = True
+
+            if btnclkd:
+                sleep(0.5)
+                move((500, 100))
 
             sleep(7)
+        sleep(1)
+
+def inspector():
+    """
+    None -> None
+    Get info from the running game
+    like game resutls etc
+    """
+    global img, bad_play
+
+    while boton:
+        while running and boton:
+            if img is None:
+                sleep(1)
+                continue
+
+            vdn = detect.victory_defeat(img)
+            if vdn == detect.VICTORY:
+                log("Victory detected!")
+                bad_play = True
+                sleep(210)
+            elif vdn == detect.DEFEAT:
+                log("Defeat detected!")
+                bad_play = False
+                sleep(210)
+
+            sleep(1)
         sleep(1)
 
 def mode_detective():
@@ -691,6 +746,7 @@ def mode_detective():
                 logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
                 if not (gmr is None):
                     gmode = gmr
+
             if hp == 0:
                 sleep(5)
             else:
@@ -743,6 +799,7 @@ def run():
     Thread(target=dialoger).start()
     Thread(target=mode_detective).start()
     Thread(target=printer).start()
+    Thread(target=inspector).start()
 
     logger.info("Starting main loop")
     logger.info("Game region: {}".format(GMREG))
