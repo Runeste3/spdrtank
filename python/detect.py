@@ -12,6 +12,9 @@ from thefuzz import fuzz
 from math import prod, dist, atan, pi
 from os import listdir
 
+# Testing
+#read = lambda a, b: ""
+#init_ocr = lambda a: None
 #----------------------------------
 print("\n Initiating Neural Nets... \n")
 chk_model = None
@@ -456,6 +459,7 @@ CMPIM = read_img("src/queue/cmptvbtn.png", "grey")
 RCNIM = read_img("src/queue/recon.png",    "grey")
 IDLIM = read_img("src/queue/idle.png",     "grey")
 CNFIM = read_img("src/queue/okbtn.png",    "grey")
+NOIM  = read_img("src/queue/nobtn.png",    "grey")
 RTRIM = read_img("src/queue/rtrbtn.png",   "grey")
 VCTIM = read_img("src/queue/vctbnr.png",   "grey")
 DFTIM = read_img("src/queue/dftbnr.png",   "grey")
@@ -499,7 +503,18 @@ def confirm_dialog(img):
     if not found returns None
     """
     ncnfim = recal(CNFIM, ogsz=1920, wonly=True)
-    return look_for(ncnfim, img, 0.93)
+    res = look_for(ncnfim, img, 0.75, scr=True)
+
+    if not (res is None):
+        okpos, okscr = res
+        nnoim = recal(NOIM, ogsz=1920, wonly=True)
+        res = look_for(nnoim, img, 0.75, scr=True)
+        if not (res is None):
+            nopos, noscr = res
+            #print(okpos, nopos, okscr, noscr)
+            if noscr > okscr and dist(okpos, nopos) < 40:
+                return
+        return okpos
 
 def retry_button(img):
     """
@@ -508,7 +523,7 @@ def retry_button(img):
     if not found return None
     """
     res = recal(RTRIM, ogsz=1920, wonly=True)
-    return look_for(res, img, 0.93)
+    return look_for(res, img, 0.9)
 
 def victory_defeat(img):
     """
@@ -1564,7 +1579,8 @@ def load_chick_model():
     Load the chick model to the global variable
     """
     global chk_model
-    chk_model = Model("src/models/chick.onnx", ["chick",])
+    if chk_model is None:
+        chk_model = Model("src/models/chick.onnx", ["chick",])
 
 def load_map_model(pm):
     """
@@ -2137,8 +2153,8 @@ if __name__ == "__main__":
     new_win(win.size)
     reg = 0, 0, win.size[0], win.size[1]
 
-    __record(reg)
-    quit()
+    #__record(reg)
+    #quit()
 
     img = get_region(reg)
     rect = confirm_dialog(img)

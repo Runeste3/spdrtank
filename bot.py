@@ -73,12 +73,27 @@ def release_all():
 
 def botoff():
     global boton
-    boton = False
+    if boton:
+        boton = False
+        print("\n")
+        print("Exitting...")
+        print("\n")
+    else:
+        print("\n")
+        print("Waiting for bot loops to exit...")
+        print("\n")
 
 def reset():
     botoff()
     sleep(5)
     subprocess.call(['python\python', 'bot.py'], shell=True)
+
+def win_trade():
+    global bad_play
+    bad_play = not bad_play
+    print("\n")
+    print("Trying to {} next match!".format("Win" if not bad_play else "Lose"))
+    print("\n")
 
 def pause_run():
     global running
@@ -619,7 +634,9 @@ def leaver():
             else:
                 logger.info("Leave button detected: {}".format(pos))
                 click((pos[0] + 80, pos[1] + 25), hover=0.3)
-            sleep(5)
+            for _ in range(5):
+                if boton:
+                    sleep(1)
         sleep(1)
 
 def queuer():
@@ -648,11 +665,16 @@ def queuer():
                     if not (cbtn is None):
                         if in_game:
                             running = False
-                            sleep(5)
+                            for _ in range(5):
+                                if boton:
+                                    sleep(1)
                             print("\n")
                             for i in range(30):
                                 print("Resetting after {} seconds...".format(50 - i), end="\r")
-                                sleep(1)
+                                if boton:
+                                    sleep(1)
+                                else:
+                                    return
                             print("\nRESETTING\n")
                             reset()
                             logger.info("Resetting")
@@ -661,7 +683,9 @@ def queuer():
 
                         click(cbtn)
                         cmp_prsd = True
-            sleep(6) 
+            for _ in range(6):
+                if boton:
+                    sleep(1) 
         sleep(1)
 
 def dialoger():
@@ -701,8 +725,22 @@ def dialoger():
                 sleep(0.5)
                 move((500, 100))
 
-            sleep(7)
+            for _ in range(7):
+                if boton:
+                    sleep(1)
         sleep(1)
+
+def bad_play_switch(on):
+    """
+    bool -> None
+    Turn 'bad_play' global variable
+    on or off (True of False)
+    and also write to the local config file
+    the bad_play status
+    """
+    global bad_play
+    bad_play = on
+    save_conf(no_prompt=True)
 
 def inspector():
     """
@@ -710,7 +748,7 @@ def inspector():
     Get info from the running game
     like game resutls etc
     """
-    global img, bad_play
+    global img
 
     while boton:
         while running and boton:
@@ -721,12 +759,16 @@ def inspector():
             vdn = detect.victory_defeat(img)
             if vdn == detect.VICTORY:
                 log("Victory detected!")
-                bad_play = True
-                sleep(210)
+                bad_play_switch(True)
+                for _ in range(210):
+                    if boton:
+                        sleep(1)
             elif vdn == detect.DEFEAT:
                 log("Defeat detected!")
-                bad_play = False
-                sleep(210)
+                bad_play_switch(False)
+                for _ in range(210):
+                    if boton:
+                        sleep(1)
 
             sleep(1)
         sleep(1)
@@ -748,9 +790,13 @@ def mode_detective():
                     gmode = gmr
 
             if hp == 0:
-                sleep(5)
+                for _ in range(5):
+                    if boton:
+                        sleep(1)
             else:
-                sleep(30)
+                for _ in range(30):
+                    if boton:
+                        sleep(1)
         sleep(1)
 
 def printer():
@@ -822,7 +868,7 @@ def run():
         sleep(1)
 
 def read_conf():
-    global HPTHS, ENTHS, mv_far
+    global HPTHS, ENTHS, mv_far, bad_play
 
     try:
         with open('config.json', 'r') as f:
@@ -831,36 +877,38 @@ def read_conf():
         HPTHS = int(conf['hpt'])
         ENTHS = int(conf['ent'])
         mv_far = conf['mf'] == "1"
+        bad_play = conf['bp'] == "1"
     except:
         print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
         save_conf()
         read_conf()
 
-def save_conf():
-    global mv_far, HPTHS, ENTHS, running
+def save_conf(no_prompt=False):
+    global mv_far, HPTHS, ENTHS, running, bad_play
 
-    running = False
+    if not no_prompt:
+        running = False
 
-    sleep(0.5)
+        sleep(0.5)
 
-    print("\n")
+        print("\n")
+        HPTHS, ENTHS = "", ""
 
-    HPTHS, ENTHS = "", ""
+        while not (HPTHS.isnumeric() and ENTHS.isnumeric()):
+            HPTHS, ENTHS = (input("HP threshold(0-100): "), 
+                            input("Energy threshold(0-100): "))
+        HPTHS, ENTHS = int(HPTHS), int(ENTHS)
+        mv_far = input("Follow the closest teammate? Y/N: ").lower() == "n"
 
-    while not (HPTHS.isnumeric() and ENTHS.isnumeric()):
-        HPTHS, ENTHS = (input("HP threshold(0-100): "), 
-                        input("Energy threshold(0-100): "))
-    HPTHS, ENTHS = int(HPTHS), int(ENTHS)
-    mv_far = input("Follow the closest teammate? Y/N: ").lower() == "n"
+        print("\n")
 
-    print("\n")
+        running = True
 
     conf = {}
     conf['hpt'] = str(HPTHS)
     conf['ent'] = str(ENTHS)
     conf['mf']  = "1" if mv_far else "0"
-
-    running = True
+    conf['bp']  = "1" if bad_play else "0"
 
     with open('config.json', 'w') as f:
         json.dump(conf, f)
@@ -888,16 +936,19 @@ def init():
     detect.init_nr()
 
     read_conf()
+    print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
 
     if 100 > HPTHS > 0 and 100 > ENTHS > 0:
         add_kf("q", botoff)
         add_kf("p", pause_run)
         add_kf("m", sr_cmptv)
         add_kf("z", save_conf)
+        add_kf("x", win_trade)
 
         listener()
 
         print("")
+
         run()
 
 if __name__ == "__main__":

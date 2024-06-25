@@ -63,7 +63,7 @@ def compare(pos, temp, thresh=500, prnt=False):
 
     return result < thresh
 
-def look_for(temp, scene=None, thresh=0.8, tl=False, clr_match=False):
+def look_for(temp, scene=None, thresh=0.8, tl=False, clr_match=False, scr=False):
     """
     Image, Image, float(0->0.1), bool, bool -> tuple(int, int)
     Find a part of "scene" that matches "temp" and return it's 
@@ -90,7 +90,10 @@ def look_for(temp, scene=None, thresh=0.8, tl=False, clr_match=False):
         else:
             pos = maxloc
 
-        return pos
+        if scr:
+            return pos, maxval
+        else:
+            return pos
 
 def find_all(temp, scene=None, thresh=0.8):
     """
