@@ -1280,7 +1280,11 @@ def detail_dc(vmap):
     for ((x1, y1, x2, y2), _, name) in loob:
         if "House" in name or "Obstacle" in name:
             # Pre-efects
-            if name == "Obstacle-4":
+            if name == "Obstacle-2":
+                x2 += 50
+                if x2 > w:
+                    x2 = w
+            elif name == "Obstacle-4":
                 x1 -= 300
                 x2 += 20
                 y1 -= 20

@@ -516,7 +516,7 @@ def release_mouse():
 def attacking():
     """
     None -> None
-    Shoot the nearest enemy
+    Shoot enemies
     """
     global img, boton, slfloc, loals, loenm, atkmode
     global running, hp, laht, xyd, atarget, bad_play
@@ -616,29 +616,6 @@ def hpen():
                 sleep(0.5)
         sleep(1)
 
-def leaver():
-    """
-    None -> None
-    Leave the match when leave button is visible
-    """
-    global img, boton, running
-
-    while boton:
-        while running and boton:
-            if img is None:
-                sleep(1)
-                continue
-            pos = detect.end_game(img)
-            if pos is None:
-                pass
-            else:
-                logger.info("Leave button detected: {}".format(pos))
-                click((pos[0] + 80, pos[1] + 25), hover=0.3)
-            for _ in range(5):
-                if boton:
-                    sleep(1)
-        sleep(1)
-
 def queuer():
     """
     None -> None
@@ -688,44 +665,68 @@ def queuer():
                     sleep(1) 
         sleep(1)
 
-def dialoger():
+def button_handler():
     """
     None -> None
-    Handle dialogs
+    Handle buttons clicking 
     """
     global img, boton, running, cmptv
+
+    def leave_btn():
+        pos = detect.end_game(img)
+        lvfnd = not (pos is None)
+        if lvfnd:
+            logger.info("Leave button detected: {}".format(pos))
+            click((pos[0] + 80, pos[1] + 25), hover=0.3)
+        return lvfnd
+
+    def recon_dial():
+        rcndg = detect.reconnect_dialog(img)
+        rcnfnd = not (rcndg is None)
+        if rcnfnd:
+            logger.info("Clicking reconnect button {}".format(rcndg))
+            x, y, w, h = rcndg
+            ysbtn = x + (w // 3), y + h - (h // 5)
+            click(ysbtn)
+        return rcnfnd
+
+    def ok_btn():
+        okbtn = detect.confirm_dialog(img)
+        okfnd = not (okbtn is None)
+        if okfnd:
+            logger.info("Clicking ok button {}".format(okbtn))
+            click(okbtn)
+        return okfnd
+
+    def rtr_btn():
+        rtrbtn = detect.retry_button(img)
+        rtrfnd = not (rtrbtn is None)
+        if rtrfnd:
+            logger.info("Clicking retry button {}".format(rtrbtn))
+            click(rtrbtn)
+        return rtrfnd
+
+    rec_ans, ok_ans, rtr_ans, lv_ans = (False,) * 4
 
     while boton:
         while running and boton:
             if img is None:
                 sleep(1)
                 continue
-            btnclkd = False
-            rcndg = detect.reconnect_dialog(img)
-            if not (rcndg is None):
-                logger.info("Clicking reconnect button {}".format(rcndg))
-                x, y, w, h = rcndg
-                ysbtn = x + (w // 3), y + h - (h // 5)
-                click(ysbtn)
-                btnclkd = True
-            else:
-                okbtn = detect.confirm_dialog(img)
-                if not (okbtn is None):
-                    logger.info("Clicking ok button {}".format(okbtn))
-                    click(okbtn)
-                    btnclkd = True
-                else:
-                    rtrbtn = detect.retry_button(img)
-                    if not (rtrbtn is None):
-                        logger.info("Clicking retry button {}".format(rtrbtn))
-                        click(rtrbtn)
-                        btnclkd = True
 
-            if btnclkd:
+            rec_ans = recon_dial()
+            if not rec_ans:
+                ok_ans = ok_btn()
+                if not ok_ans:
+                    rtr_ans = rtr_btn()
+                    if not rtr_ans:
+                        lv_ans = leave_btn()
+
+            if rec_ans or ok_ans or rtr_ans or lv_ans:
                 sleep(0.5)
                 move((500, 100))
 
-            for _ in range(7):
+            for _ in range(5):
                 if boton:
                     sleep(1)
         sleep(1)
@@ -745,10 +746,24 @@ def bad_play_switch(on):
 def inspector():
     """
     None -> None
-    Get info from the running game
-    like game resutls etc
+    Get information about the current
+    game mode, map and result
     """
-    global img
+    global img, gmode, hp
+
+    lgrt = None
+
+    def detect_result():
+        nonlocal lgrt
+        vdn = detect.victory_defeat(img)
+        if vdn == detect.VICTORY:
+            log("Victory detected!")
+            bad_play_switch(True)
+            lgrt = time()
+        elif vdn == detect.DEFEAT:
+            log("Defeat detected!")
+            bad_play_switch(False)
+            lgrt = time()
 
     while boton:
         while running and boton:
@@ -756,46 +771,22 @@ def inspector():
                 sleep(1)
                 continue
 
-            vdn = detect.victory_defeat(img)
-            if vdn == detect.VICTORY:
-                log("Victory detected!")
-                bad_play_switch(True)
-                for _ in range(210):
-                    if boton:
-                        sleep(1)
-            elif vdn == detect.DEFEAT:
-                log("Defeat detected!")
-                bad_play_switch(False)
-                for _ in range(210):
-                    if boton:
-                        sleep(1)
-
-            sleep(1)
-        sleep(1)
-
-def mode_detective():
-    """
-    None -> None
-    Know the current mode in play
-    and change global variable 'gmode'
-    """
-    global img, gmode, hp
-
-    while boton:
-        while running and boton:
-            if not (img is None):
-                gmr = detect.detect_mode_map(img)
-                logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
-                if not (gmr is None):
-                    gmode = gmr
-
+            gmr = detect.detect_mode_map(img)
+            logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
+            if not (gmr is None):
+                gmode = gmr
+            
             if hp == 0:
                 for _ in range(5):
                     if boton:
+                        if lgrt is None or ((time() - lgrt) > 210):
+                            detect_result()
                         sleep(1)
             else:
                 for _ in range(30):
                     if boton:
+                        if lgrt is None or ((time() - lgrt) > 210):
+                            detect_result()
                         sleep(1)
         sleep(1)
 
@@ -837,19 +828,28 @@ def run():
 
     logger.info("Starting threads")
 
+    # ------------------- BOT LOOPS ------------------------------------
+    # (2) Attacking/Mouse
     Thread(target=attacking).start()
+    # (3) Movement/Keyboard
     Thread(target=moving).start()
+    # (4) Using skills
     Thread(target=hpen).start()
-    Thread(target=leaver).start()
+    # (5) Join competetive queue 
     Thread(target=queuer).start()
-    Thread(target=dialoger).start()
-    Thread(target=mode_detective).start()
-    Thread(target=printer).start()
+    # (6) Click on game UI buttons
+    Thread(target=button_handler).start()
+    # (7) Get pre/post-game information(e.g. game result, mode, map)
     Thread(target=inspector).start()
-
+    # (8) Print the current bot status
+    Thread(target=printer).start()
+    # 
     logger.info("Starting main loop")
     logger.info("Game region: {}".format(GMREG))
-
+    #
+    # (1) Main loop, getting images of the game, parse HP, energy,
+    #     find enemies, allies and player location.
+    # ------------------------------------------------------------------
     while boton:
         while running and boton:
             img = get_region(GMREG)
@@ -939,10 +939,16 @@ def init():
     print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
 
     if 100 > HPTHS > 0 and 100 > ENTHS > 0:
+        # -------- Shortcut Listeners -----------------
+        # Turn the bot off
         add_kf("q", botoff)
+        # Pause/Un-pause the bot
         add_kf("p", pause_run)
+        # Turn automatic competitive queue joining on/off
         add_kf("m", sr_cmptv)
+        # Edit user preferences
         add_kf("z", save_conf)
+        # Switch win trade target for the next game win/lose
         add_kf("x", win_trade)
 
         listener()
