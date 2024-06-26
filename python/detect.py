@@ -1,8 +1,9 @@
+import cv2 as cv
+import numpy as np
+import heapq
 from os import read
 from time import time
 from random import choice
-import cv2 as cv
-import numpy as np
 from cvbot.match import look_for, sift_find, mse, find_all, remove_close
 from cvbot.io import read_img, save_img
 from cvbot.images import Image
@@ -503,7 +504,7 @@ def confirm_dialog(img):
     if not found returns None
     """
     ncnfim = recal(CNFIM, ogsz=1920, wonly=True)
-    res = look_for(ncnfim, img, 0.75, scr=True)
+    res = look_for(ncnfim, img, 0.8, scr=True)
 
     if not (res is None):
         okpos, okscr = res
@@ -1306,6 +1307,13 @@ def detail_dc(vmap):
                     x1 = 0
                 if x2 > w:
                     x2 = w
+            elif name == "House-5":
+                y1 = 0
+            elif name == "House-6":
+                y1 = 0
+                y2 += 50
+                if y2 > h:
+                    y2 = h
             elif name == "House-7":
                 y2 += 50
                 if y2 > h:
@@ -1337,10 +1345,8 @@ def detail_dc(vmap):
                 vmap = cut_rec("tr", vmap, (x1, y1, x2, y2), (120, 550), igm=True)
                 vmap = cut_rec("tr", vmap, (x1, y1, x2, y2), (300, 100), igm=True)
             elif name == "House-5":
-                vmap[:y2, x1:x2] = 255
                 vmap = cut_rec("br", vmap, (x1, y1, x2, y2), (180, 80), igm=True)
             elif name == "House-6":
-                vmap[:y2, x1:x2] = 255
                 vmap = cut_tri("br", vmap, (x1, y1, x2, y2), (200, 50),  igm=True)
                 vmap = cut_tri("bl", vmap, (x1, y1, x2, y2), (100, 150), igm=True)
             elif name == "House-7":
@@ -1765,6 +1771,70 @@ def nearest_b(p, vmap):
 
     return p
 
+def heap_best_path(vmap, sp, ep):
+    """
+    bi np im, Point, Point -> list(Point)
+    Determine the shortest path from 'sp' to 'ep'
+    based on the given map 'vmap'
+    """
+    # vmap is of size CSWxCSH, shape CSHxCSW
+    sp, ep = nearest_b(sp, vmap), nearest_b(ep, vmap)
+    # Point reference book keeping 
+    ryx = np.zeros(vmap.shape[:2] + (2,), dtype=np.uint16)
+    # Tunring vmap into bool array
+    iswall = vmap == 255
+    # Keeping track of which points we've visited
+    visited = np.zeros(vmap.shape[:2], dtype='bool')
+    visited[:, :] = False
+    visited[sp[1], sp[0]] = True
+    visited[ep[1], ep[0]] = False
+    # Costs heap, data structure for extracting minimum cost fast
+    costs = []
+    heapq.heapify(costs)
+    costs.sort(key=lambda x: x[0])
+    # Keeping track of the closest point so far, in case we can't reach ep
+    cp = sp
+    bpsf = cp
+    bcsf = None
+    # Testing
+    #svmap = vmap.copy()
+    
+    while True:
+        for x in range(-1, 2):
+            for y in range(-1, 2):
+                tp = cp[0] + x, cp[1] + y
+                if (tp[0] < 0    or tp[1] < 0    or
+                    tp[0] >= CSW or tp[1] >= CSH or
+                    (x, y) == (0, 0)):
+                    continue
+                if tp == ep:
+                    return build_lop(ryx, [ep, tp, cp])
+                elif not visited[tp[1], tp[0]] and not iswall[tp[1], tp[0]]:
+                    visited[tp[1], tp[0]] = True
+                    cost = dist(tp, ep)# + dist(tp, sp))
+                    ryx[tp[1], tp[0]] = (cp[1], cp[0])
+                    heapq.heappush(costs, (cost, tp))
+
+        if len(costs) > 0:
+            min_cost, min_loc = heapq.heappop(costs)
+            mloc = min_loc[1], min_loc[0]
+            cp = mloc[1], mloc[0]
+
+            if (bcsf is None) or (min_cost < bcsf):
+                bcsf = min_cost
+                bpsf = cp
+
+            # Testing
+            #svmap[mloc] = 255
+            #cv.imshow("Pathing", cv.resize(svmap, (800, 600)))
+            #cv.waitKey(1)
+        else:
+            if bpsf == sp:
+                return [sp, ep]
+            else:
+                return build_lop(ryx, [bpsf,])
+
+
 
 def best_path(vmap, sp, ep):
     """
@@ -1795,12 +1865,13 @@ def best_path(vmap, sp, ep):
                     (x, y) == (0, 0)):
                     continue
                 if tp == ep:
+                    print("Successfully found a route!")
                     return build_lop(ryx, [ep, tp, cp])
                 elif not visited[tp[1], tp[0]]:
                     visited[tp[1], tp[0]] = True
 
                     if vmap[tp[1], tp[0]] == 0:
-                        cost = round(dist(tp, ep) + dist(tp, sp))
+                        cost = dist(tp, ep)# + dist(tp, sp))
                         ryx[tp[1], tp[0]] = (cp[1], cp[0])
 
                         if cost_loc.get(cost) is None:
@@ -1825,7 +1896,7 @@ def best_path(vmap, sp, ep):
             # Testing
             #svmap[mloc] = 255
             #cv.imshow("Pathing", cv.resize(svmap, (800, 600)))
-            #cv.waitKey(0)
+            #cv.waitKey(1)
         else:
             if bpsf == sp:
                 return [sp, ep]
@@ -1900,7 +1971,7 @@ def draw_path(lop, vmap):
     and return it
     """
     for p in lop:
-        vmap = cv.drawMarker(vmap, p, 255, cv.MARKER_DIAMOND, 1, 1)
+        vmap = cv.drawMarker(vmap, p, 125, cv.MARKER_DIAMOND, 1, 2)
 
     return vmap
 
@@ -1971,7 +2042,14 @@ def direction(img, sp, ep):
     #cv.waitKey(0)
     #return
     #
-    bpath = best_path(vmap, sp, ep)
+    #pst = time()
+    #bpath = best_path(vmap, sp, ep)
+    #pt = time() - pst
+
+    # Testing
+    #hpst = time()
+    bpath = heap_best_path(vmap, sp, ep)
+    #hpt = time() - hpst
     bpath = untangle(bpath, vmap)
     #tvmap = draw_path(bpath, vmap.copy())  # Testing
     dr, pe = path_to_dr(bpath)
@@ -1991,11 +2069,13 @@ def direction(img, sp, ep):
     #             img.img, np.array((255, 255, 255), 
     #                                          dtype=img.img.dtype)), 
     #    (800, 600)))
+    #print("Detect T: {} | Path T: {} | Heap T: {}"
+    #      .format(dt, pt, hpt))
     #vmap = cv.drawMarker(vmap, pe, 255, cv.MARKER_DIAMOND, 2, 1)
     #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
     #vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
     #cv.imshow("vmap",  cv.resize( vmap, (1066, 600)))
-    #cv.waitKey(1)
+    #cv.waitKey(0)
     return dr
 
 #def _map_sift():
@@ -2151,28 +2231,34 @@ if __name__ == "__main__":
     from matplotlib import colors
 
 
-    hwnd = find_window("Spider Tanks", exact=True)
-    win = Window(hwnd)
-    win.repos(0, 0)
-    new_win(win.size)
-    reg = 0, 0, win.size[0], win.size[1]
+    #hwnd = find_window("Spider Tanks", exact=True)
+    #win = Window(hwnd)
+    #win.repos(0, 0)
+    #new_win(win.size)
+    #reg = 0, 0, win.size[0], win.size[1]
 
     #__record(reg)
     #quit()
 
-    img = get_region(reg)
-    rect = confirm_dialog(img)
-    print("CONFIRM DIALOG RETURNED: {}".format(rect))
-    if not (rect is None):
-        pos = rect[0] + 5, rect[1] + 5
-        mouse.click(pos)
-    quit()
-    center = reg[2] // 2, reg[3] // 2
-    cur_map = "VAVA"
+    #img = get_region(reg)
+    #rect = confirm_dialog(img)
+    #print("CONFIRM DIALOG RETURNED: {}".format(rect))
+    #rect = retry_button(img)
+    #print("CONFIRM DIALOG RETURNED: {}".format(rect))
+    #if not (rect is None):
+    #    pos = rect[0] + 5, rect[1] + 5
+    #    print(pos)
+    #    #mouse.click(pos)
+    #quit()
+    #center = reg[2] // 2, reg[3] // 2
+    p1 = 1011, 104
+    p2 = 28, 559
+    cur_map = "SAHA"
     load_map_model(cur_map)
-    while True:
-        img = get_region(reg)
-        direction(img, center, center)
+    #img = get_region(reg)
+    img = read_img("__test/_cc/{}.png".format(argv[1]))
+    direction(img, p1, p2)
+    quit()
     #init_ocr(['en'])
     #img = read_img("test.png")
     #recognize_map(img)
