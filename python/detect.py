@@ -807,7 +807,7 @@ def __record(reg):
 
     while True:
         img = get_region(reg)
-        save_img(img, "__test/_pathing/Shrine/{}.png".format(i))
+        save_img(img, "__test/_pathing/dragon/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -1410,7 +1410,7 @@ def detail(vmap):
         return detail_dc(vmap)
     elif cur_map == "VAVA":
         return detail_vault(vmap)
-    elif cur_map in ("SAHA", "SHSH"):
+    elif cur_map in ("SAHA", "SHSH", "DRCA"):
         return mask_detail(vmap)
     
     return vmap
@@ -1655,6 +1655,8 @@ def load_map_model(pm):
         map_model = Model("src/models/haven.pt")
     elif pm == "SHSH":
         map_model = Model("src/models/shrine.pt")
+    elif pm == "DRCA":
+        map_model = Model("src/models/dragon.pt", ['p2', 'w1', 'w2', 'p1'])
 
 def map_objs(img):
     """
@@ -2075,7 +2077,7 @@ def direction(img, sp, ep):
     #vmap = cv.drawMarker(vmap, sp, 255, cv.MARKER_DIAMOND, 2, 1)
     #vmap = cv.drawMarker(vmap, ep, 255, cv.MARKER_DIAMOND, 2, 1)
     #cv.imshow("vmap",  cv.resize( vmap, (1066, 600)))
-    #cv.waitKey(0)
+    #cv.waitKey(1)
     return dr
 
 #def _map_sift():
@@ -2231,14 +2233,14 @@ if __name__ == "__main__":
     from matplotlib import colors
 
 
-    #hwnd = find_window("Spider Tanks", exact=True)
-    #win = Window(hwnd)
-    #win.repos(0, 0)
-    #new_win(win.size)
-    #reg = 0, 0, win.size[0], win.size[1]
+    hwnd = find_window("Spider Tanks", exact=True)
+    win = Window(hwnd)
+    win.repos(0, 0)
+    new_win(win.size)
+    reg = 0, 0, win.size[0], win.size[1]
 
-    #__record(reg)
-    #quit()
+    __record(reg)
+    quit()
 
     #img = get_region(reg)
     #rect = confirm_dialog(img)

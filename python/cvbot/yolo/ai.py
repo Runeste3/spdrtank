@@ -20,7 +20,7 @@ class Model:
             self.session = YOLO(path, verbose=False)
             self.model_type = "pytorch"
             # Dict
-            self.classes = self.session.names
+            self.classes = self.session.names if classes == [] else classes
         self.detect(Image(np.zeros((640, 640, 3), np.uint8)), 0.6)
 
     def detect(self, img, thresh):
