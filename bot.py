@@ -533,7 +533,7 @@ def attacking():
                 continue
             if bad_play:
                 chnc = uniform(0.0, 1.0)
-                if chnc > 0.95 and loenm:
+                if chnc > 0.995 and loenm:
                     click(loenm[0])
                     sleep(1)
             elif loenm:

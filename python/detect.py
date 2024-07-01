@@ -21,6 +21,7 @@ print("\n Initiating Neural Nets... \n")
 chk_model = None
 map_model = None
 game_mode = None
+supported_maps = ("SAHA", "SHSH", "DRCA")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1113,7 +1114,7 @@ def lf_detail(lfmap):
         lfmap = lf_detail_dc(lfmap)
     elif cur_map == "VAVA":
         lfmap = lf_detail_vault(lfmap)
-    elif cur_map in ("SAHA", "SHSH"):
+    elif cur_map in supported_maps:
         lfmap = lf_mask_detail(lfmap)
 
     return lfmap
@@ -1410,7 +1411,7 @@ def detail(vmap):
         return detail_dc(vmap)
     elif cur_map == "VAVA":
         return detail_vault(vmap)
-    elif cur_map in ("SAHA", "SHSH", "DRCA"):
+    elif cur_map in supported_maps:
         return mask_detail(vmap)
     
     return vmap
@@ -1667,7 +1668,7 @@ def map_objs(img):
 
     if map_model is None:
         return []
-    elif cur_map == "DECA":
+    elif cur_map in ("DECA", "DRCA"):
         return map_model.detect(img, 0.4)
     else:
         return map_model.detect(img, 0.5)
@@ -1784,7 +1785,7 @@ def heap_best_path(vmap, sp, ep):
     # Point reference book keeping 
     ryx = np.zeros(vmap.shape[:2] + (2,), dtype=np.uint16)
     # Tunring vmap into bool array
-    iswall = vmap == 255
+    iswall = vmap > 0 
     # Keeping track of which points we've visited
     visited = np.zeros(vmap.shape[:2], dtype='bool')
     visited[:, :] = False
@@ -1813,7 +1814,11 @@ def heap_best_path(vmap, sp, ep):
                     return build_lop(ryx, [ep, tp, cp])
                 elif not visited[tp[1], tp[0]] and not iswall[tp[1], tp[0]]:
                     visited[tp[1], tp[0]] = True
-                    cost = dist(tp, ep)# + dist(tp, sp))
+                    wly  = tp[1] - 5 if tp[1] >= 5 else 0
+                    wlx  = tp[0] - 5 if tp[0] >= 5 else 0
+                    wts  = iswall[wly:tp[1]+5, wlx:tp[0]+5].sum() / 5
+                    pted = dist(tp, ep)
+                    cost = wts + pted
                     ryx[tp[1], tp[0]] = (cp[1], cp[0])
                     heapq.heappush(costs, (cost, tp))
 
@@ -1827,9 +1832,9 @@ def heap_best_path(vmap, sp, ep):
                 bpsf = cp
 
             # Testing
-            #svmap[mloc] = 255
+            #svmap[mloc] = 125
             #cv.imshow("Pathing", cv.resize(svmap, (800, 600)))
-            #cv.waitKey(1)
+            #cv.waitKey(0)
         else:
             if bpsf == sp:
                 return [sp, ep]
@@ -2233,14 +2238,13 @@ if __name__ == "__main__":
     from matplotlib import colors
 
 
-    hwnd = find_window("Spider Tanks", exact=True)
-    win = Window(hwnd)
-    win.repos(0, 0)
-    new_win(win.size)
-    reg = 0, 0, win.size[0], win.size[1]
-
-    __record(reg)
-    quit()
+    #hwnd = find_window("Spider Tanks", exact=True)
+    #win = Window(hwnd)
+    #win.repos(0, 0)
+    #new_win(win.size)
+    #reg = 0, 0, win.size[0], win.size[1]
+    #__record(reg)
+    #quit()
 
     #img = get_region(reg)
     #rect = confirm_dialog(img)
@@ -2253,9 +2257,9 @@ if __name__ == "__main__":
     #    #mouse.click(pos)
     #quit()
     #center = reg[2] // 2, reg[3] // 2
-    p1 = 1011, 104
-    p2 = 28, 559
-    cur_map = "SAHA"
+    p1 = 1130, 56
+    p2 = 94, 756
+    cur_map = "DRCA"
     load_map_model(cur_map)
     #img = get_region(reg)
     img = read_img("__test/_cc/{}.png".format(argv[1]))
