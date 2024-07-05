@@ -7,7 +7,7 @@ from random import choice
 from cvbot.match import look_for, sift_find, mse, find_all, remove_close
 from cvbot.io import read_img, save_img
 from cvbot.images import Image
-from cvbot.ai import init_ocr, read
+from cvbot.ai import read, init_ocr
 from cvbot.yolo.ai import Model
 from thefuzz import fuzz
 from math import prod, dist, atan, pi
@@ -21,7 +21,7 @@ print("\n Initiating Neural Nets... \n")
 chk_model = None
 map_model = None
 game_mode = None
-supported_maps = ("SAHA", "SHSH", "DRCA")
+supported_maps = ("SAHA", "SHSH", "DRCA")#, "JUTE")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -775,6 +775,9 @@ def close_obj(bima, bimb):
                 #cv.waitKey(0)
                 return pa
 
+cptim = read_img("src/modes/cptr_hill.png", "grey")
+dfnim = read_img("src/modes/dfnd_hill.png", "grey")
+
 def hill(img):
     """
     Image -> Point | None
@@ -782,25 +785,32 @@ def hill(img):
     and it's position on screen
     if not found returns None instead
     """
-    mcim, ax, ay = main_scene(img)
-    wtim = cv.inRange(mcim, (255, 255, 255, 255),
-                            (255, 255, 255, 255))
-    grim = cv.inRange(mcim, (241, 241, 241, 255),
-                            (241, 241, 241, 255))
-    wtim = process(wtim)
-    grim = process(grim)
+    global cptim, dfnim
 
-    hill = close_obj(wtim, grim)
+    wtim = cv.inRange(img.img, (255, 255, 255, 255),
+                               (255, 255, 255, 255))
+    wtim = Image(wtim)
+    wpos = look_for(recal(cptim, ogsz=1920, wonly=True), wtim, 0.8)
+    if wpos is None:
+        wpos = look_for(recal(dfnim, ogsz=1920, wonly=True), wtim, 0.8)
 
-    if not (hill is None):
-        hill = hill[0] + ax, hill[1] + ay
-        hill = hill[0], hill[1] + int(recal(200))
+    if not (wpos is None):
+        hpos = wpos[0], wpos[1] + int(recal(200))
+        return hpos
+    #grim = cv.inRange(mcim, (241, 241, 241, 255),
+    #                        (241, 241, 241, 255))
+    #wtim = process(wtim)
+    #grim = process(grim)
+
+    #hill = close_obj(wtim, grim)
+
+    #if not (hill is None):
+    #    hill = hill[0] + ax, hill[1] + ay
+    #    hill = hill[0], hill[1] + int(recal(200))
         #cimg = img.img.copy()
         #cimg = cv.drawMarker(cimg, hill, (0, 255, 0), cv.MARKER_CROSS, 50)
         #cv.imshow("Marker", cimg)
         #cv.waitKey(1)
-
-    return hill
     
 def __record(reg):
     sleep(3)
@@ -808,7 +818,7 @@ def __record(reg):
 
     while True:
         img = get_region(reg)
-        save_img(img, "__test/_pathing/dragon/{}.png".format(i))
+        save_img(img, "__test/_pathing/temple/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -1100,6 +1110,7 @@ def lf_mask_detail(lfmap):
     for (mask, _, name) in loob:
         if name.startswith("w"):
             lfmap = cv.drawContours(lfmap, [mask], 0, (255, 255, 255), -1)
+            #lfmap[y1:y2, x1:x2][mask] = 255
 
     return lfmap
 
@@ -1396,6 +1407,7 @@ def mask_detail(vmap):
     for (mask, _, _) in loob:
         vmap = cv.drawContours(vmap, [mask], 0, (255, 255, 255), 20)
         vmap = cv.drawContours(vmap, [mask], 0, (255, 255, 255), -1)
+        #vmap[y1:y2, x1:x2][mask] = 255
 
     return vmap
 
@@ -1557,13 +1569,15 @@ def detect_mode_map(img):
     string if not known
     """
     mnim = process_mn(img) 
-    result = read(mnim, " ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+    result = read(mnim, " ABCDEFGHIJKLMNOPQRSTUVWXYZ").upper()
     if " ON " in result:
         mds, mps = result.split(" ON ")
     elif " OM " in result:
         mds, mps = result.split(" OM ")
     elif " O " in result:
         mds, mps = result.split(" O ")
+    elif " ON" in result:
+        mds, mps = result.split(" ON")
     else:
         mds, mps = "", ""
     
@@ -1653,11 +1667,17 @@ def load_map_model(pm):
                                                     "Wall-19",
                                                     ])
     elif pm == "SAHA":
-        map_model = Model("src/models/haven.pt")
+        map_model = Model("src/models/haven.pt")#, "mask", ['p1', 'p2', 'p3',
+                                                #            'p4', 'w1', 'w2',
+                                                #            'w3', 'w4', 'w5',
+                                                #            'w6', 'w7', 'w8',
+                                                #            'w9'])
     elif pm == "SHSH":
         map_model = Model("src/models/shrine.pt")
     elif pm == "DRCA":
         map_model = Model("src/models/dragon.pt", ['p2', 'w1', 'w2', 'p1'])
+    #elif pm == "JUTE":
+    #    map_model = Model("src/models/temple.pt")
 
 def map_objs(img):
     """
@@ -2246,7 +2266,19 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    #img = get_region(reg)
+    new_win((1920, 1080))
+    hlim = read_img("htest.png")
+    pos = hill(hlim)
+    print(pos)
+    quit()
+    #cur_map = "SAHA"
+    #load_map_model(cur_map)
+    #while True:
+    #    img = get_region(reg)
+    #    loob = map_objs(img)
+    #    vmap = make_vmap(img)
+    #    cv.imshow("test", cv.resize(vmap, (1066, 600)))
+    #    cv.waitKey(1)
     #rect = confirm_dialog(img)
     #print("CONFIRM DIALOG RETURNED: {}".format(rect))
     #rect = retry_button(img)
@@ -2257,14 +2289,14 @@ if __name__ == "__main__":
     #    #mouse.click(pos)
     #quit()
     #center = reg[2] // 2, reg[3] // 2
-    p1 = 1130, 56
-    p2 = 94, 756
-    cur_map = "DRCA"
-    load_map_model(cur_map)
-    #img = get_region(reg)
-    img = read_img("__test/_cc/{}.png".format(argv[1]))
-    direction(img, p1, p2)
-    quit()
+    #p1 = 1130, 56
+    #p2 = 94, 756
+    #cur_map = "DRCA"
+    #load_map_model(cur_map)
+    ##img = get_region(reg)
+    #img = read_img("__test/_cc/{}.png".format(argv[1]))
+    #direction(img, p1, p2)
+    #quit()
     #init_ocr(['en'])
     #img = read_img("test.png")
     #recognize_map(img)
