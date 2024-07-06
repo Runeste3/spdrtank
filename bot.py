@@ -925,9 +925,13 @@ def init():
     win = Window(hwnd)
     detect.new_win(win.size)
     win.repos(0, 0)
-    GMREG  = 0, 0, win.size[0], win.size[1]
+    GMREG  = (
+            0, 0, 
+            win.size[0] if win.size[0] < detect.MON['width']  else detect.MON['width'], 
+            win.size[1] if win.size[1] < detect.MON['height'] else detect.MON['height']
+    )
     CENTER = (GMREG[2] // 2,
-            GMREG[3] // 2)
+              GMREG[3] // 2)
     slfloc = CENTER
     gmode = 1
 

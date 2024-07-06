@@ -20,7 +20,7 @@ def init_ocr(langs, model_path=None):
     #else:
     print("\nOCR model is already initiated!")
 
-def read(img, allowlist=None, join_wrd=True):
+def read(img, allowlist="", join_wrd=True):
     """
     Image, str | None -> str | list(str)
     Use easyocr to read string in given image
@@ -30,7 +30,7 @@ def read(img, allowlist=None, join_wrd=True):
 
     res = pytesseract.image_to_string(cvtColor(img.img, COLOR_BGR2RGB),
                                       lang='eng',
-                                      config='tessedit_char_whitelist=' + allowlist)
+                                      config='-c tessedit_char_whitelist=' + allowlist)
     return res
     #if reader is None:
     #    print("\nOCR model was not initiated, please call 'init_ocr' before calling 'read' function")

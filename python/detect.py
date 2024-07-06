@@ -9,15 +9,18 @@ from cvbot.io import read_img, save_img
 from cvbot.images import Image
 from cvbot.ai import read, init_ocr
 from cvbot.yolo.ai import Model
+from cvbot._screen import MON
 from thefuzz import fuzz
 from math import prod, dist, atan, pi
 from os import listdir
 
 # Testing
+import logging
 #read = lambda a, b: ""
 #init_ocr = lambda a: None
 #----------------------------------
 print("\n Initiating Neural Nets... \n")
+logger = logging.getLogger(__name__)
 chk_model = None
 map_model = None
 game_mode = None
@@ -117,8 +120,6 @@ class Weapon:
         lbsx = (w // 3)
         lblx = -lbsx
         lbim = img.img[lby:, lbsx:lblx]
-        #cv.imshow("test", lbim)
-        #cv.waitKey(0)
         return lbim
 
     def find_wep(img): 
@@ -217,6 +218,7 @@ ENRCLR   = ((1,   245, 255, 255),
             (1,   249, 255, 255))
 OG_RZ    = prod((1600, 900))
 OGMSZ    = prod((1920, 1080))
+fullscreen = False
 weapon   = Weapon(None) 
 rltv_sz  = OG_RZ
 rltv_szu = 1600, 900
@@ -231,11 +233,14 @@ def new_win(wsz):
     reset the factor variable
     based on it
     """
-    global rltv_sz, rltv_szu
-    w, h = (wsz[0] - 16), (wsz[1] - 39)
+    global rltv_sz, rltv_szu, fullscreen
+    fullscreen = wsz[0] == MON['width']
+    if not fullscreen:
+        w, h = (wsz[0] - 16), (wsz[1] - 39)
+    else:
+        w, h = wsz
     rltv_sz = w * h
     rltv_szu = w, h
-
 
 def recal(n, ogsz=None, reverse=False, wonly=False):
     """
@@ -1527,7 +1532,7 @@ def process_mn(img):
     to where game map name appears
     """
     w, h = img.size
-    ny2 =  round(h * 0.2)
+    ny2 =  round(h * (0.05 if fullscreen else 0.1))
     nx1 =  round(w * 0.25)
     nx2 = -round(w * 0.25)
     return Image(img.img[:ny2, nx1:nx2])
@@ -1569,7 +1574,9 @@ def detect_mode_map(img):
     string if not known
     """
     mnim = process_mn(img) 
-    result = read(mnim, " ABCDEFGHIJKLMNOPQRSTUVWXYZ").upper()
+    result = read(mnim, allowlist="'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '").upper().replace("\n", "")
+    logger.info("Map Mode OCR parsing: {}".format(result))
+
     if " ON " in result:
         mds, mps = result.split(" ON ")
     elif " OM " in result:
@@ -2244,6 +2251,7 @@ def direction(img, sp, ep):
 
 if __name__ == "__main__":
     from cvbot.capture import screenshot , get_region
+    from cvbot._screen import MON
     from cvbot.io import read_img
     from cvbot.windows import get_window
     from cvbot import mouse 
@@ -2258,19 +2266,27 @@ if __name__ == "__main__":
     from matplotlib import colors
 
 
-    #hwnd = find_window("Spider Tanks", exact=True)
-    #win = Window(hwnd)
-    #win.repos(0, 0)
-    #new_win(win.size)
-    #reg = 0, 0, win.size[0], win.size[1]
+    hwnd = find_window("Spider Tanks", exact=True)
+    win = Window(hwnd)
+    win.repos(0, 0)
+    new_win(win.size)
+    reg = 0, 0, win.size[0], win.size[1]
     #__record(reg)
     #quit()
 
-    new_win((1920, 1080))
-    hlim = read_img("htest.png")
-    pos = hill(hlim)
-    print(pos)
+    while True:
+        img = get_region(reg)
+        img = process_mn(img)
+        result = read(img, allowlist="'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '").upper().replace("\n", "")
+        print(result)
+        cv.imshow("test", cv.resize(img.img, (1066, 600)))
+        cv.waitKey(1)
     quit()
+    #new_win((1920, 1080))
+    #hlim = read_img("htest.png")
+    #pos = hill(hlim)
+    #print(pos)
+    #quit()
     #cur_map = "SAHA"
     #load_map_model(cur_map)
     #while True:
