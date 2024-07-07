@@ -9,7 +9,7 @@ from ultralytics import YOLO
 classifiers = {}
 
 class Model:
-    def __init__(self, path, pred_type="box", classes=[]) -> None:
+    def __init__(self, path, classes=[], pred_type="box") -> None:
         if path.endswith("onnx"):
             self.pred_type = pred_type
             self.session = ort.InferenceSession(path, 
@@ -43,14 +43,19 @@ class Model:
 
         for result in results:
             for i in range(len(result.boxes)):
-                conf = result.boxes[i].conf
+                box = result.boxes[i]
+                conf = box.conf
                 if conf > thresh:
-                    clsid = int(result.boxes[i].cls)
+                    clsid = int(box.cls)
                     name = self.classes[clsid]
+
                     mask = result.masks[i]
                     mask = np.array(mask.xy, np.int32)[0]
                     mask = mask.reshape((-1, 1, 2))
-                    locms.append((mask, conf, name))
+
+                    box = np.array(box.xyxy[0].cpu(), np.int32)
+
+                    locms.append((mask, float(conf), name))
         
         return locms
 

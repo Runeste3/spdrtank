@@ -732,7 +732,7 @@ def gms_to_mode(gms):
     """
     for sgms, md in GMSR:
         smr = fuzz.ratio(sgms, gms)
-        if smr > 90:
+        if smr > 80:
             return md
     return None 
 
@@ -1532,7 +1532,7 @@ def process_mn(img):
     to where game map name appears
     """
     w, h = img.size
-    ny2 =  round(h * (0.05 if fullscreen else 0.1))
+    ny2 =  round(h * (0.05 if fullscreen else (0.5 if rltv_szu[0] < 1920 else 0.1)))
     nx1 =  round(w * 0.25)
     nx2 = -round(w * 0.25)
     return Image(img.img[:ny2, nx1:nx2])
@@ -1559,7 +1559,7 @@ def mn_to_mp(gmn):
     """
     for mn in LOMN:
         smr = fuzz.ratio(mn, gmn)
-        if smr > 90:
+        if smr > 80:
             mnp = mn.split(" ")
             if len(mnp) >= 2 and (len(mnp[0]) > 2 and len(mnp[1])):
                 return "{}{}".format(mnp[0][:2], mnp[-1][:2])
@@ -2274,13 +2274,65 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
+    pm = "JUTE"
+    load_map_model(pm)
+
+    # Width x Height: 50 x 20
+    # Pit-1  -> 16, 10
+    # Pit-4  -> 14, -2
+    pax, pay = 13, 7
+    pbx, pby = 13, -3
     while True:
         img = get_region(reg)
-        img = process_mn(img)
-        result = read(img, allowlist="'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '").upper().replace("\n", "")
-        print(result)
+        #objs = []
+        #for (mask, box), scr, name in map_objs(img):
+        #    obc = box[2] - box[0], box[3] - box[1]
+        #    objs.append((obc, name))
+        #ppos = player(img)[0]
+        #objs.append((ppos, "player"))
+        #result = ""
+        #for c, n in objs:
+        #    result += "{}: {} ".format(n, dist(c, ppos))
+        #print("")
+        #print(result)
+        #print("")
+
+        for (mask, box), scr, name in map_objs(img):
+            if name == "pit-1":
+                ow, oh = box[2] - box[0], box[3] - box[1]
+                oac    = box[0] + (ow // 2), box[1] + (oh // 2)
+                #wr, hr = cent[0] / wrf, cent[1] / hrf
+            elif name == "pit-4":
+                ow, oh = box[2] - box[0], box[3] - box[1]
+                obc    = box[0] + (ow // 2), box[1] + (oh // 2)
+
+        pos = player(img)
+        if pos:
+            pos = pos[0]
+            #npos = round(pos[0] / wr), round(pos[1] / hr)
+            anx = (pax - round((oac[0] - pos[0]) / 50) if oac[0] > pos[0] else
+                   pax + round((pos[0] - oac[0]) / 50))
+            any = (pay - round((oac[1] - pos[1]) / 50) if oac[1] > pos[1] else
+                   pay + round((pos[1] - oac[1]) / 50))
+            bnx = (pbx - round((obc[0] - pos[0]) / 50) if obc[0] > pos[0] else
+                   pbx + round((pos[0] - obc[0]) / 50))
+            bny = (pby - round((obc[1] - pos[1]) / 50) if obc[1] > pos[1] else
+                   pby + round((pos[1] - obc[1]) / 50))
+            print("Reduced player position: {} {} Old positions: {} {} {} {} {}".format(
+                (anx, any), (bnx, bny), oac, obc, pos, dist(oac, pos), dist(obc, pos)
+            ))
+
+        fmap = np.zeros((20, 65), dtype=np.uint8)
+        img.img = cv.drawMarker(img.img, pos,  (0, 255, 0), cv.MARKER_DIAMOND, 50, 3)
+        img.img = cv.drawMarker(img.img, oac, (0, 0, 255), cv.MARKER_DIAMOND, 50, 3)
+        img.img = cv.drawMarker(img.img, obc, (0, 0, 255), cv.MARKER_DIAMOND, 50, 3)
+        fmap[any, anx] = 255
+        fmap[bny, bnx] = 125
         cv.imshow("test", cv.resize(img.img, (1066, 600)))
+        cv.imshow("map",  cv.resize(fmap, (1066, 600)))
         cv.waitKey(1)
+        sleep(1)
+
     quit()
     #new_win((1920, 1080))
     #hlim = read_img("htest.png")
