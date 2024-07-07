@@ -936,8 +936,8 @@ def init():
     gmode = 1
 
     logger.info("Starting bot")
-    detect.init_nr()
     print("\n Initiating OCR... \n")
+    detect.init_nr()
 
     read_conf()
     print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))

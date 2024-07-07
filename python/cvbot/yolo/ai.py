@@ -55,7 +55,7 @@ class Model:
 
                     box = np.array(box.xyxy[0].cpu(), np.int32)
 
-                    locms.append((mask, float(conf), name))
+                    locms.append(((mask, box), float(conf), name))
         
         return locms
 

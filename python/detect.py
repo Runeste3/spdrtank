@@ -1112,7 +1112,7 @@ def lf_mask_detail(lfmap):
     """
     global loob
 
-    for (mask, _, name) in loob:
+    for ((mask, _), _, name) in loob:
         if name.startswith("w"):
             lfmap = cv.drawContours(lfmap, [mask], 0, (255, 255, 255), -1)
             #lfmap[y1:y2, x1:x2][mask] = 255
@@ -1409,7 +1409,7 @@ def detail_dc(vmap):
 def mask_detail(vmap):
     global loob
 
-    for (mask, _, _) in loob:
+    for ((mask, _), _, _) in loob:
         vmap = cv.drawContours(vmap, [mask], 0, (255, 255, 255), 20)
         vmap = cv.drawContours(vmap, [mask], 0, (255, 255, 255), -1)
         #vmap[y1:y2, x1:x2][mask] = 255
@@ -1532,7 +1532,7 @@ def process_mn(img):
     to where game map name appears
     """
     w, h = img.size
-    ny2 =  round(h * (0.05 if fullscreen else (0.5 if rltv_szu[0] < 1920 else 0.1)))
+    ny2 =  round(h * 0.20)
     nx1 =  round(w * 0.25)
     nx2 = -round(w * 0.25)
     return Image(img.img[:ny2, nx1:nx2])
@@ -1574,7 +1574,8 @@ def detect_mode_map(img):
     string if not known
     """
     mnim = process_mn(img) 
-    result = read(mnim, allowlist="'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '").upper().replace("\n", "")
+    #result = read(mnim, allowlist="'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ '").upper().replace("\n", "")
+    result = read(mnim, allowlist=" ABCDEFGHIJKLMNOPQRSTUVWXYZ").upper()
     logger.info("Map Mode OCR parsing: {}".format(result))
 
     if " ON " in result:
@@ -2280,8 +2281,24 @@ if __name__ == "__main__":
     # Width x Height: 50 x 20
     # Pit-1  -> 16, 10
     # Pit-4  -> 14, -2
-    pax, pay = 13, 7
-    pbx, pby = 13, -3
+    dapos = {
+        "pit-1" :((13, 11), (44,  11)),
+        "pit-4" :((13,  1), (42,   1)),
+        "pit-3" :((11, 21), (44 , 21)),
+        "pit-2" :(29,  15),
+        "wall-2":(27,   6)
+    }
+    def pred_pos(osp, name, psp, side=None):
+        oap = (dapos[name] if side is None else
+               (dapos[name][0] if side == 'l' else dapos[name][1]))
+        pax = (oap[0] - round((osp[0] - psp[0]) / 50) if osp[0] > psp[0] else
+               oap[0] + round((psp[0] - osp[0]) / 50))
+        pay = (oap[1] - round((osp[1] - psp[1]) / 50) if osp[1] > psp[1] else
+               oap[1] + round((psp[1] - osp[1]) / 50))
+        return pax, pay
+
+
+    gc = round(reg[2] / 2), round(reg[3] / 2)
     while True:
         img = get_region(reg)
         #objs = []
@@ -2296,42 +2313,83 @@ if __name__ == "__main__":
         #print("")
         #print(result)
         #print("")
+        lppos = []
+        ppos = player(img)
+        if not ppos:
+            print("player not visible")
+            sleep(1)
+            continue
+        else:
+            ppos = ppos[0]
+        
+        p1c, p3c, p4c = (0,)    * 3
+        fp1, fp3, fp4 = (None,) * 3
+        side = None
 
         for (mask, box), scr, name in map_objs(img):
+            ow, oh = box[2] - box[0], box[3] - box[1]
+            spos = box[0] + (ow // 2), box[1] + (oh // 2)
+            #ux, uy, lx, ly = box[0], box[1], box[0] + ow, box[1] + oh
+            weight = round(1100 / (dist(spos, gc) + 1))
+
             if name == "pit-1":
-                ow, oh = box[2] - box[0], box[3] - box[1]
-                oac    = box[0] + (ow // 2), box[1] + (oh // 2)
-                #wr, hr = cent[0] / wrf, cent[1] / hrf
+                if p1c == 0:
+                    fp1 = (spos, weight)
+                p1c += 1
             elif name == "pit-4":
-                ow, oh = box[2] - box[0], box[3] - box[1]
-                obc    = box[0] + (ow // 2), box[1] + (oh // 2)
+                if p4c == 0:
+                    fp4 = (spos, weight)
+                p4c += 1
+            elif name == "pit-3":
+                if p3c == 0:
+                    fp3 = (spos, weight)
+                p3c += 1
+            elif name in ("pit-2", "wall-2"):
+                if side is None:
+                    side = 'l' if spos[0] > ppos[0] else 'r'
+                pap = pred_pos(spos, name, ppos)
+                lppos.append((pap, name, weight))
+            else:
+                continue
+                
+            # Add to list of predicted actual positions
+            if not (name  in ("pit-1", "pit-3", "pit-4")):
+                pass
+        else:
+            # Add pit 1, 3, 4
+            if p1c == 1:
+                if side is None:
+                    side = 'l' if fp1[0][0] > ppos[0] else 'r'
+                pap = pred_pos(fp1[0], "pit-1", ppos, side)
+                lppos.append((pap, "pit-1", fp1[1]))
+            if p3c == 1:
+                if side is None:
+                    side = 'l' if fp3[0][0] > ppos[0] else 'r'
+                pap = pred_pos(fp3[0], "pit-3", ppos, side)
+                lppos.append((pap, "pit-3", fp3[1]))
+            if p4c == 1:
+                if side is None:
+                    side = 'l' if fp4[0][0] > ppos[0] else 'r'
+                pap = pred_pos(fp4[0], "pit-4", ppos, side)
+                lppos.append((pap,  "pit-4", fp4[1]))
 
-        pos = player(img)
-        if pos:
-            pos = pos[0]
-            #npos = round(pos[0] / wr), round(pos[1] / hr)
-            anx = (pax - round((oac[0] - pos[0]) / 50) if oac[0] > pos[0] else
-                   pax + round((pos[0] - oac[0]) / 50))
-            any = (pay - round((oac[1] - pos[1]) / 50) if oac[1] > pos[1] else
-                   pay + round((pos[1] - oac[1]) / 50))
-            bnx = (pbx - round((obc[0] - pos[0]) / 50) if obc[0] > pos[0] else
-                   pbx + round((pos[0] - obc[0]) / 50))
-            bny = (pby - round((obc[1] - pos[1]) / 50) if obc[1] > pos[1] else
-                   pby + round((pos[1] - obc[1]) / 50))
-            print("Reduced player position: {} {} Old positions: {} {} {} {} {}".format(
-                (anx, any), (bnx, bny), oac, obc, pos, dist(oac, pos), dist(obc, pos)
-            ))
+        fmap = cv.imread("tmap.png", 0)
+        tp = 0
+        xsm, ysm = 0, 0
+        for pap, name, weight in lppos:
+            print(pap, name, weight)
+            xsm += (pap[0] * weight)
+            ysm += (pap[1] * weight)
+            tp  += weight 
 
-        fmap = np.zeros((20, 65), dtype=np.uint8)
-        img.img = cv.drawMarker(img.img, pos,  (0, 255, 0), cv.MARKER_DIAMOND, 50, 3)
-        img.img = cv.drawMarker(img.img, oac, (0, 0, 255), cv.MARKER_DIAMOND, 50, 3)
-        img.img = cv.drawMarker(img.img, obc, (0, 0, 255), cv.MARKER_DIAMOND, 50, 3)
-        fmap[any, anx] = 255
-        fmap[bny, bnx] = 125
+        pap = round(xsm / tp), round(ysm / tp)
+        fmap[pap[1], pap[0]] = 255 
+        print("Player Position: " + str(pap))
         cv.imshow("test", cv.resize(img.img, (1066, 600)))
         cv.imshow("map",  cv.resize(fmap, (1066, 600)))
         cv.waitKey(1)
         sleep(1)
+        print("\n")
 
     quit()
     #new_win((1920, 1080))
