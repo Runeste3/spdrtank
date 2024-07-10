@@ -26,7 +26,7 @@ map_model = None
 map_img   = None
 game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE")
-static_maps    = ()#("JUTE")
+static_maps    = ("JUTE")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -2111,7 +2111,6 @@ def direction(img, sp, ep, mp):
     global cur_map, loob, map_img, lpmp
 
     loob = map_objs(img)
-    return rt_direction(img, sp, ep)
 
     if sp == ep:
         return 0, 0
@@ -2432,11 +2431,11 @@ def mpd_direction(msp, mep):
     mnp      = next_point(msp,  mep)
     dr, _    = path_to_dr([msp, mnp])
 
-    drwmap = map_img.copy()
-    drwmap[msp[1], msp[0]] = 125 
-    drwmap[mnp[1], mnp[0]] = 125 
-    cv.imshow("map", cv.resize(drwmap, (1066, 600)))
-    cv.waitKey(1)
+    #drwmap = map_img.copy()
+    #drwmap[msp[1], msp[0]] = 125 
+    #drwmap[mnp[1], mnp[0]] = 125 
+    #cv.imshow("map", cv.resize(drwmap, (1066, 600)))
+    #cv.waitKey(1)
     return dr
 
 CHK_CLCT_IM = read_img('src/modes/chk_clctd.png')
