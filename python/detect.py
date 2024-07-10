@@ -23,8 +23,10 @@ print("\n Initiating Neural Nets... \n")
 logger = logging.getLogger(__name__)
 chk_model = None
 map_model = None
+map_img   = None
 game_mode = None
-supported_maps = ("SAHA", "SHSH", "DRCA")#, "JUTE")
+supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE")
+static_maps    = ()#("JUTE")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -222,6 +224,7 @@ fullscreen = False
 weapon   = Weapon(None) 
 rltv_sz  = OG_RZ
 rltv_szu = 1600, 900
+center   =  800, 450 
 # TEST CONSTANTS
 #CRSCLR = (0, 0, 255, 255)
 # --------------
@@ -233,14 +236,15 @@ def new_win(wsz):
     reset the factor variable
     based on it
     """
-    global rltv_sz, rltv_szu, fullscreen
+    global rltv_sz, rltv_szu, fullscreen, center
     fullscreen = wsz[0] == MON['width']
     if not fullscreen:
         w, h = (wsz[0] - 16), (wsz[1] - 39)
     else:
         w, h = wsz
-    rltv_sz = w * h
+    rltv_sz  = w * h
     rltv_szu = w, h
+    center   = wsz[0] // 2, wsz[1] // 2
 
 def recal(n, ogsz=None, reverse=False, wonly=False):
     """
@@ -1597,23 +1601,56 @@ def detect_mode_map(img):
         if cur_map != prsd_map:
             print("\n Loading map model... \n")
             load_map_model(prsd_map)
-        if game_mode == 3:
-            print("\n Loading chicks model... \n")
-            load_chick_model()
         cur_map = prsd_map
+        if game_mode == 3:
+            load_chick_model()
+        elif added_brls[0] and not (game_mode is None) and cur_map == added_brls[1]:
+            remove_barrels()
     else:
         prsd_mode = None
     
     return prsd_mode
+
+added_brls = False, None
 
 def load_chick_model():
     """
     None -> None
     Load the chick model to the global variable
     """
-    global chk_model
+    global chk_model, cur_map, map_img, static_maps, added_brls
     if chk_model is None:
+        print("\n Loading chicks model... \n")
         chk_model = Model("src/models/chick.onnx", ["chick",])
+        if cur_map in static_maps:
+            add_barrels(cur_map)
+            added_brls = True, cur_map
+
+def add_barrels(cmp, val=255):
+    """
+    str -> None
+    Add barrels to the current map image
+    """
+    for i, brl in enumerate(static_objs[cmp]['barrels']):
+        for l in range(1, static_objs[cmp]['brls_mp'][i][0] + 1):
+            map_img[brl[1], brl[0]-l] = val
+        for r in range(1, static_objs[cmp]['brls_mp'][i][1] + 1):
+            map_img[brl[1], brl[0]+r] = val
+        for u in range(1, static_objs[cmp]['brls_mp'][i][2] + 1):
+            map_img[brl[1]-u, brl[0]] = val
+        for d in range(1, static_objs[cmp]['brls_mp'][i][3] + 1):
+            map_img[brl[1]+d, brl[0]] = val
+
+        map_img[brl[1], brl[0]] = val
+
+def remove_barrels():
+    """
+    None -> None
+    Remove barrels from the current map image
+    """
+    global added_brls
+    add_barrels(added_brls[1], 0)
+    added_brls = False, None
 
 def load_map_model(pm):
     """
@@ -1621,7 +1658,7 @@ def load_map_model(pm):
     Load the map objects detection model
     for the current map
     """
-    global map_model
+    global map_model, map_img
 
     if pm == "DECA":
         map_model = Model("src/models/desert.onnx", ["House-1",
@@ -1684,8 +1721,9 @@ def load_map_model(pm):
         map_model = Model("src/models/shrine.pt")
     elif pm == "DRCA":
         map_model = Model("src/models/dragon.pt", ['p2', 'w1', 'w2', 'p1'])
-    #elif pm == "JUTE":
-    #    map_model = Model("src/models/temple.pt")
+    elif pm == "JUTE":
+        map_model = Model("src/models/temple.pt")
+        map_img   = cv.imread("src/maps/temple.png", 0)
 
 def map_objs(img):
     """
@@ -1772,19 +1810,30 @@ def build_lop(ryx, lop):
 
 def nearest_b(p, vmap):
     """
-    Point, bi np im -> Point
+    Point, bi np im, bool -> Point
     Return the nearest point to 'p'
     that serves as a 'good point' to
     start from or head to
     'good point' means black pixel
     surrounded by all black pixels
     """
+    h, w = vmap.shape
+
+    if p[1] < 0:
+        p = (p[0], 0)
+    if p[1] >= h:
+        p = (p[0], h-1) 
+    if p[0] < 0:
+        p = (0, p[1])
+    if p[0] >= w:
+        p = (w-1, p[1])
+
     if vmap[p[1], p[0]] == 0:
         return p
 
-    fctr = 2
+    fctr = 1
 
-    while fctr < CSW:
+    while fctr < w:
         for x in range(-1, 2):
             for y in range(-1, 2):
                 if x == 0 and y == 0:
@@ -1792,7 +1841,7 @@ def nearest_b(p, vmap):
 
                 tp = p[0] + (fctr * x), p[1] + (fctr * y)
 
-                if (tp[0] < 0) or (tp[1] < 0) or (tp[0] >= CSW) or (tp[1] >= CSH):
+                if (tp[0] < 0) or (tp[1] < 0) or (tp[0] >= w) or (tp[1] >= h):
                     continue
 
                 if vmap[tp[1], tp[0]] == 0:
@@ -2049,7 +2098,361 @@ def shrink_vmap(vmap, sp, ep):
     
     return vmap, nsp, nep
 
-def direction(img, sp, ep):
+lpmp = 20, 10 
+
+def direction(img, sp, ep, mp):
+    """
+    Image, Point, Point | str, bool -> Direction
+    Call the appropriate direction finding function
+    based on map support and ronvert points 'sp' and 'ep' 
+    to map points
+    End point can be string of the end location e.g. 'hill'
+    """
+    global cur_map, loob, map_img, lpmp
+
+    loob = map_objs(img)
+    return rt_direction(img, sp, ep)
+
+    if sp == ep:
+        return 0, 0
+
+    if cur_map in static_maps:
+        msp = map_point(sp)
+        if msp is None:
+            if not mp:
+                return rt_direction(img, sp, ep)
+            else:
+                return 0, 0
+        msp = nearest_b(msp, map_img)
+        lpmp = msp
+        if type(ep) is str:
+            mep = get_obj_loc(ep, msp, cur_map)
+        else:
+            if mp:
+                mep = ep
+            else:
+                mep = map_point(ep)
+            if mep is None:
+                if not mp:
+                    return rt_direction(img, sp, ep)
+                else:
+                    return 0, 0
+            mep = nearest_b(mep, map_img)
+        if msp == mep:
+            return 0, 0
+        return mpd_direction(msp, mep)
+    else:
+        return rt_direction(img, sp, ep)
+
+objects_mps = {
+    "JUTE":{
+        "pit-1" :(44,  11),
+        "pit-5" :(13,  11),
+        "pit-4" :(42,   1),
+        "pit-7" :(13,   1),
+        "pit-3" :(44 , 21),
+        "pit-6" :(11,  21),
+        "pit-2" :(29,  15),
+        "wall-2":(27,   6)
+    }
+}
+
+def pred_pos(osp, name, psp):
+    dapos = objects_mps[cur_map]
+    oap = dapos[name] 
+    pax = (oap[0] - round((osp[0] - psp[0]) / 50) if osp[0] > psp[0] else
+           oap[0] + round((psp[0] - osp[0]) / 50))
+    pay = (oap[1] - round((osp[1] - psp[1]) / 50) if osp[1] > psp[1] else
+           oap[1] + round((psp[1] - osp[1]) / 50))
+    return pax, pay
+
+#def jute_mp(p):
+#    """
+#    Point -> Map Point | None
+#    Return the map point for the jungle temple map
+#    TODO: extend and generalize to work for all maps
+#            as much as possible
+#    """
+#    global loob, center
+#
+#    lppos = []
+#    p1c, p3c, p4c = (0,)    * 3
+#    fp1, fp3, fp4 = (None,) * 3
+#    side = None
+#    gc   = center 
+#    mxd  = dist(gc, (0, 0))
+#
+#    for (_, box), _, name in loob:
+#        ow, oh = box[2] - box[0], box[3] - box[1]
+#        spos = box[0] + (ow // 2), box[1] + (oh // 2)
+#        pcd    = dist(spos, gc)
+#        weight = round(mxd / (pcd + 1))
+#
+#        if name == "pit-1":
+#            if p1c == 0:
+#                fp1 = (spos, weight)
+#            p1c += 1
+#        elif name == "pit-4":
+#            if p4c == 0:
+#                fp4 = (spos, weight)
+#            p4c += 1
+#        elif name == "pit-3":
+#            if p3c == 0:
+#                fp3 = (spos, weight)
+#            p3c += 1
+#        elif name in ("pit-2", "wall-2"):
+#            if side is None:
+#                side = 'l' if spos[0] > p[0] else 'r'
+#            pap = pred_pos(spos, name, p)
+#            lppos.append((pap, name, weight))
+#        else:
+#            continue
+#    else:
+#        # Add pit 1, 3, 4
+#        if p1c == 1:
+#            if side is None:
+#                side = 'l' if fp1[0][0] > p[0] else 'r'
+#            pap = pred_pos(fp1[0], "pit-1", p, side)
+#            lppos.append((pap, "pit-1", fp1[1]))
+#        if p3c == 1:
+#            if side is None:
+#                side = 'l' if fp3[0][0] > p[0] else 'r'
+#            pap = pred_pos(fp3[0], "pit-3", p, side)
+#            lppos.append((pap, "pit-3", fp3[1]))
+#        if p4c == 1:
+#            if side is None:
+#                side = 'l' if fp4[0][0] > p[0] else 'r'
+#            pap = pred_pos(fp4[0], "pit-4", p, side)
+#            lppos.append((pap,  "pit-4", fp4[1]))
+#
+#    tp = 0
+#    xsm, ysm = 0, 0
+#    for pap, name, weight in lppos:
+#        xsm += (pap[0] * weight)
+#        ysm += (pap[1] * weight)
+#        tp  += weight 
+#
+#    if tp != 0:
+#        pap = round(xsm / tp), round(ysm / tp)
+#        return pap
+def update_ploc(img, ploc):
+    global lpmp, loob
+    loob = map_objs(img) 
+    lpmp = map_point(ploc)
+
+doobig = {
+    '':[],
+    'JUTE':['wall-1', 'wall-3']
+}
+
+def map_point(p):
+    """
+    Point -> Map Point | None
+    Return the map point for the jungle temple map
+    """
+    global loob, center, doobig, cur_map
+
+    lppos = []
+    gc   = center 
+    mxd  = dist(gc, (0, 0))
+    loobig = doobig[cur_map]
+
+    for (_, box), _, name in loob:
+        if name in loobig:
+            continue 
+        ow, oh = box[2] - box[0], box[3] - box[1]
+        spos = box[0] + (ow // 2), box[1] + (oh // 2)
+        pcd    = dist(spos, gc)
+        weight = round(mxd / (pcd + 1))
+        pap = pred_pos(spos, name, p)
+        lppos.append((pap, weight))
+
+    tp = 0
+    xsm, ysm = 0, 0
+    for pap, weight in lppos:
+        xsm += (pap[0] * weight)
+        ysm += (pap[1] * weight)
+        tp  += weight 
+
+    if tp != 0:
+        pap = round(xsm / tp), round(ysm / tp)
+        return pap
+    
+def aoi_closest_to(mp):
+    """
+    Map Point -> Map Point
+    Find the area of interest closest to the given
+    map point
+    """
+    global cur_map
+
+    loaoi = static_objs[cur_map]['aoi']
+    baoi, bd = None, None
+    for aoi in loaoi:
+        dst = dist(mp, aoi)
+        if baoi is None:
+            baoi = aoi
+            bd   = dst
+        elif dst < bd:
+            baoi = aoi
+            bd   = dst
+
+    return baoi
+
+lvaoi = None, time()
+
+def aoi_farthest_from(mp):
+    """
+    Map Point -> Map Point
+    Find the area of interest farthest from the
+    given map point
+    """
+    global cur_map, lvaoi
+
+    if not (lvaoi[0] is None) and (time() - lvaoi[1]) < 10:
+        return lvaoi[0]
+
+    loaoi = static_objs[cur_map]['aoi']
+    baoi, bd = None, None
+    for aoi in loaoi:
+        dst = dist(mp, aoi)
+        if baoi is None:
+            baoi = aoi
+            bd   = dst
+        elif dst > bd:
+            baoi = aoi
+            bd   = dst
+
+    lvaoi = baoi, time()
+    return baoi
+
+def aoi_random():
+    """
+    Map Point -> Map Point
+    Return a random area of interest
+    from the list of aoi(s) based on
+    current map
+    """
+    global cur_map, lvaoi
+
+    if not (lvaoi[0] is None) and (time() - lvaoi[1]) < 10:
+        return lvaoi[0]
+
+    aoi = choice(static_objs[cur_map]['aoi'])
+    lvaoi = aoi, time()
+    return aoi
+
+static_objs = {
+    "JUTE":{
+        "hill"   :(28,  9),
+        "barrels":[(16, 11), (40, 10)],
+        "brls_mp":((0, 1, 0, 0), (1, 0, 0, 0)),
+        "aoi"    :((7, 10), (20, 11), (36, 10), (50, 11))
+        }
+}
+map_points = {
+    "JUTE":(
+        (10, 16),
+        ( 9, 16),
+        (17,  5),
+        (10,  5),
+        (18, 16),
+        (13, 16),
+        (23,  3),
+        (21, 18),
+        (28,  1),
+        (28, 20),
+        (33,  3),
+        (23, 10),
+        (32, 10),
+        (35, 18),
+        (40,  5),
+        (40, 16),
+        (46,  5),
+        (46, 16)
+    )
+}
+
+def closest_to(p, lop):
+    """
+    Point, List of Point -> Point
+    Return the closest point in 'lop'
+    to 'p'
+    """
+    bp, bd = None, None
+    for lp in lop:
+        pd = dist(lp, p)
+        if bd is None:
+            bp = lp
+            bd = pd
+        elif pd < bd:
+            bp = lp
+            bd = pd
+    return bp
+
+def get_obj_loc(name, msp, cm):
+    """
+    str, Map Point, str -> Map Point
+    Given name of game object return
+    it's location based on given map name 'cm'
+    'msp' starting point is used to determine
+    best point if many are available
+    """
+    if name == "hill":
+        return static_objs[cm][name]
+    elif name == "barrels":
+        return closest_to(msp, static_objs[cm][name])
+
+def next_point(msp, mep):
+    """
+    Map Point, Map Point -> Map Point
+    Return a point reachable from 'msp'
+    that gets player closer  to   'mep'
+    """
+    global map_img, cur_map
+
+    lomp  = map_points[cur_map]
+    slomp = list(sorted(lomp, key=lambda p: dist(p, mep)))
+    slomp.insert(0, mep)
+
+    for ep in slomp:
+        elm = cv.line(np.zeros_like(map_img), msp, ep, 1)
+        if not (255 in map_img[elm==1]):
+            return ep
+    else:
+        return mep
+
+# Direction based on a pre-built map
+def mpd_direction(msp, mep):
+    """
+    Map Point, Map Point -> Direction
+    Return the direction to follow to get
+    to point 'mep'
+    """
+    mnp      = next_point(msp,  mep)
+    dr, _    = path_to_dr([msp, mnp])
+
+    drwmap = map_img.copy()
+    drwmap[msp[1], msp[0]] = 125 
+    drwmap[mnp[1], mnp[0]] = 125 
+    cv.imshow("map", cv.resize(drwmap, (1066, 600)))
+    cv.waitKey(1)
+    return dr
+
+CHK_CLCT_IM = read_img('src/modes/chk_clctd.png')
+
+def chck_collected(img):
+    """
+    Image -> bool
+    Return True if tank is currently holding a chick
+    or more return False if no chick was collected
+    """
+    pos = look_for(recal(CHK_CLCT_IM ,ogsz=1920, wonly=True), img,
+                   0.8, clr_match=True)
+    return not (pos is None)
+
+# Real Time live direction calculation
+def rt_direction(img, sp, ep):
     """
     Image, Point, Point -> (int[-1:1], int[-1:1])
     Determine the direction to go based on given list of objects,
@@ -2057,9 +2460,7 @@ def direction(img, sp, ep):
     serving as a pathing solution
     Return one of the 8 possible move directions (left-right, up-down)
     """
-    global loob, lpt
-
-    loob = map_objs(img) 
+    global lpt
 
     vmap = make_vmap(img)
     # Testing, TODO: Remove or Comment
@@ -2276,36 +2677,43 @@ if __name__ == "__main__":
     #quit()
 
     pm = "JUTE"
+    cur_map = pm
     load_map_model(pm)
+    load_chick_model()
 
     # Width x Height: 50 x 20
     # Pit-1  -> 16, 10
     # Pit-4  -> 14, -2
-    dapos = {
-        "pit-1" :((13, 11), (44,  11)),
-        "pit-4" :((13,  1), (42,   1)),
-        "pit-3" :((11, 21), (44 , 21)),
-        "pit-2" :(29,  15),
-        "wall-2":(27,   6)
-    }
-    def pred_pos(osp, name, psp, side=None):
-        oap = (dapos[name] if side is None else
-               (dapos[name][0] if side == 'l' else dapos[name][1]))
-        pax = (oap[0] - round((osp[0] - psp[0]) / 50) if osp[0] > psp[0] else
-               oap[0] + round((psp[0] - osp[0]) / 50))
-        pay = (oap[1] - round((osp[1] - psp[1]) / 50) if osp[1] > psp[1] else
-               oap[1] + round((psp[1] - osp[1]) / 50))
-        return pax, pay
 
+    center = round(reg[2] / 2), round(reg[3] / 2)
 
-    gc = round(reg[2] / 2), round(reg[3] / 2)
     while True:
         img = get_region(reg)
         #objs = []
         #for (mask, box), scr, name in map_objs(img):
         #    obc = box[2] - box[0], box[3] - box[1]
         #    objs.append((obc, name))
-        #ppos = player(img)[0]
+        ppos = player(img)
+        if not ppos:
+            print("Player not found")
+            sleep(1)
+            continue
+        else:
+            ppos = ppos[0]
+
+        loob = map_objs(img)
+        mp = map_point(ppos)
+        if mp is None:
+            print("Map point is none for ppos: " + str(ppos))
+            sleep(1)
+            continue
+        chks = locate_chicks(img)
+        tmim = cv.imread("tmap.png", 0)
+        for chk in chks:
+            cmp = map_point(chk)
+            tmim[cmp[1], cmp[0]] = 125
+
+        tmim[mp[1], mp[0]] = 125
         #objs.append((ppos, "player"))
         #result = ""
         #for c, n in objs:
@@ -2313,80 +2721,9 @@ if __name__ == "__main__":
         #print("")
         #print(result)
         #print("")
-        lppos = []
-        ppos = player(img)
-        if not ppos:
-            print("player not visible")
-            sleep(1)
-            continue
-        else:
-            ppos = ppos[0]
-        
-        p1c, p3c, p4c = (0,)    * 3
-        fp1, fp3, fp4 = (None,) * 3
-        side = None
-
-        for (mask, box), scr, name in map_objs(img):
-            ow, oh = box[2] - box[0], box[3] - box[1]
-            spos = box[0] + (ow // 2), box[1] + (oh // 2)
-            #ux, uy, lx, ly = box[0], box[1], box[0] + ow, box[1] + oh
-            weight = round(1100 / (dist(spos, gc) + 1))
-
-            if name == "pit-1":
-                if p1c == 0:
-                    fp1 = (spos, weight)
-                p1c += 1
-            elif name == "pit-4":
-                if p4c == 0:
-                    fp4 = (spos, weight)
-                p4c += 1
-            elif name == "pit-3":
-                if p3c == 0:
-                    fp3 = (spos, weight)
-                p3c += 1
-            elif name in ("pit-2", "wall-2"):
-                if side is None:
-                    side = 'l' if spos[0] > ppos[0] else 'r'
-                pap = pred_pos(spos, name, ppos)
-                lppos.append((pap, name, weight))
-            else:
-                continue
-                
-            # Add to list of predicted actual positions
-            if not (name  in ("pit-1", "pit-3", "pit-4")):
-                pass
-        else:
-            # Add pit 1, 3, 4
-            if p1c == 1:
-                if side is None:
-                    side = 'l' if fp1[0][0] > ppos[0] else 'r'
-                pap = pred_pos(fp1[0], "pit-1", ppos, side)
-                lppos.append((pap, "pit-1", fp1[1]))
-            if p3c == 1:
-                if side is None:
-                    side = 'l' if fp3[0][0] > ppos[0] else 'r'
-                pap = pred_pos(fp3[0], "pit-3", ppos, side)
-                lppos.append((pap, "pit-3", fp3[1]))
-            if p4c == 1:
-                if side is None:
-                    side = 'l' if fp4[0][0] > ppos[0] else 'r'
-                pap = pred_pos(fp4[0], "pit-4", ppos, side)
-                lppos.append((pap,  "pit-4", fp4[1]))
-
-        fmap = cv.imread("tmap.png", 0)
-        tp = 0
-        xsm, ysm = 0, 0
-        for pap, name, weight in lppos:
-            print(pap, name, weight)
-            xsm += (pap[0] * weight)
-            ysm += (pap[1] * weight)
-            tp  += weight 
-
-        pap = round(xsm / tp), round(ysm / tp)
-        fmap[pap[1], pap[0]] = 255 
-        print("Player Position: " + str(pap))
+        print("Map loc:" + str(mp))
         cv.imshow("test", cv.resize(img.img, (1066, 600)))
-        cv.imshow("map",  cv.resize(fmap, (1066, 600)))
+        cv.imshow("map",  cv.resize(tmim,    (1066, 600)))
         cv.waitKey(1)
         sleep(1)
         print("\n")

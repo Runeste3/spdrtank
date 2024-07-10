@@ -29,6 +29,7 @@ running = True
 gmsg = ""
 cmptv = True 
 img = None
+st_mp = False
 hp, energy = 0, 0 
 xyd = [0, 0]
 atkmode = 1
@@ -226,7 +227,7 @@ def farthest_enm():
     """
     raise Exception("Should not be called!")
 
-def move_toward(pos):
+def move_toward(pos, mp=False):
     """
     Point -> None
     Move toward a point on screen
@@ -235,7 +236,7 @@ def move_toward(pos):
     #vect = pos[0] - slfloc[0], pos[1] - slfloc[1]
     #print("\n", "Move to:", pos, "\n")
     try:
-        vect = detect.direction(img, selfloc(img), pos)
+        vect = detect.direction(img, selfloc(img), pos, mp=mp)
         #cv.imshow("vmap", cv.resize(vmap, (800, 600)))
         #cv.waitKey(1)
     except Exception as e:
@@ -289,6 +290,57 @@ def stuck(lmpq):
 
     return False
 
+def form_vector(lop, p, normalize=1):
+    """
+    List of Point, Point, int -> Vector
+    Calculate the vector formed from all the vectors
+    going from all points 'lop' to 'p'
+    """
+    vec = [0, 0]
+    nop = len(lop)
+    for lp in lop:
+        vec[0] += p[0] - lp[0]
+        vec[1] += p[1] - lp[1]
+
+    vec[0] = round(vec[0] / (normalize * nop))
+    vec[1] = round(vec[1] / (normalize * nop))
+
+    return vec
+
+def best_aoi(loenm):
+    """
+    List of Point -> Map Point
+    Based on enemy locations and self location
+    determine where in the map is considered a
+    safe area of interest
+    """
+    vec = form_vector(loenm, slfloc, normalize=50)
+    mp = vec[0] + detect.lpmp[0], vec[1] + detect.lpmp[1]
+    return detect.aoi_closest_to(mp)
+    
+def next_aoi():
+    """
+    None -> None
+    Return the next best aoi to visit
+    """
+    return detect.aoi_random()
+
+def roam():
+    """
+    None -> None
+    Move to an area of interest
+    and away from enemies
+    """
+    global loenm, slfloc
+
+    if loenm and sort_near(slfloc, loenm)[0][1] < 400:
+        mp = best_aoi(loenm)
+    else:
+        mp = next_aoi()
+
+    log("Roaming to {}".format(mp))
+    move_toward(mp, mp=True)
+
 def random_move():
     """
     None -> None
@@ -302,7 +354,7 @@ def tdm_move():
     None -> None
     Do movement in team deathmatch game
     """
-    global img, slfloc, atkmode, loenm, loals
+    global img, slfloc, atkmode, loenm, loals, st_mp
 
     #if stuck(lmpq):
     #    print("\nStuck moving away\n")
@@ -323,8 +375,11 @@ def tdm_move():
                 log("Moving to arrows {} {}".format(len(loai), naly))
                 move_toward(naly)
             elif loenm:
-                random_move()
-                sleep(uniform(0.3, 1.0))
+                if st_mp:
+                    roam()
+                else:
+                    random_move()
+                    sleep(uniform(0.3, 1.0))
     else:
         if loenm:
             mvto_nrst("enemy")
@@ -339,13 +394,17 @@ def tdm_move():
                 naly = loai[0]
                 log("Moving to arrows {} {}".format(len(loai), naly))
                 move_toward(naly)
+            elif st_mp:
+                roam()
+            else:
+                random_move()
 
 def basic_move():
     """
     None -> None
     Do basic movement to allies
     """
-    global loals, mv_far, loenm
+    global loals, mv_far, loenm, st_mp
 
     if loals:
         if not mv_far:
@@ -359,18 +418,24 @@ def basic_move():
             log("Moving to arrows: {} {}".format(len(loai), naly))
             move_toward(naly)
         elif loenm:
-            random_move()
+            if st_mp:
+                roam()
+            else:
+                random_move()
 
 def pltry_move():
     """
     None -> None
     Do movement in poultry pusher mode
     """
-    global img, slfloc
+    global img, slfloc, st_mp
 
     cpos = detect.locate_chicken(img)
     if cpos is None:
-        basic_move()
+        if st_mp:
+            roam()
+        else:
+            basic_move()
     else:
         if dist(cpos, slfloc) > detect.recal(100):
             log("Moving to poultry: {}".format(cpos))
@@ -383,14 +448,36 @@ def chkchs_move():
     None -> None
     Do movement for chicken chaser mode
     """
-    global img, slfloc
+    global img, slfloc, st_mp
 
-    lobrl = detect.barrels(img)
+    cm = detect.cur_map
 
-    if lobrl:
-        lobrl.sort(key=lambda brl: dist(brl, slfloc))
-        brl = lobrl[0][0], int(lobrl[0][1] + detect.recal(70))
-        if dist(brl, slfloc) > detect.recal(100):
+    if st_mp:
+        lobrl = detect.static_objs[cm]['barrels']
+    else:
+        lobrl = detect.barrels(img)
+
+    if (lobrl and not st_mp) or (st_mp and detect.chck_collected(img)):
+        if st_mp and not (detect.lpmp is None):
+            lobrl = list(sorted(lobrl, key=lambda brl: dist(brl, detect.lpmp)))
+        else:
+            lobrl.sort(key=lambda brl: dist(brl, slfloc))
+
+        brl = lobrl[0]
+        if not st_mp:
+            brl = brl[0], int(brl[1] + detect.recal(70))
+
+        if st_mp:
+            log("Unloading chicks: {} {}".format(len(lobrl), brl))
+            detect.update_ploc(img, slfloc)
+            if dist(brl, detect.lpmp) <= 2:
+                if uniform(0.0, 1.0) > 0.99:
+                    move_toward(brl, mp=True)
+                else:
+                    release_all()
+            else:
+                move_toward(brl, mp=True)
+        elif dist(brl, slfloc) > (detect.recal(100)):
             log("Unloading chicks: {} {}".format(len(lobrl), brl))
             move_toward(brl)
         else:
@@ -402,6 +489,8 @@ def chkchs_move():
             chk = lochk[0]
             log("Collecting chicks: {} {}".format(len(lochk), chk))
             move_toward(chk)
+        elif st_mp:
+            roam()
         else:
             basic_move()
 
@@ -410,7 +499,7 @@ def flag_move():
     None -> None
     Do movement for hold the flag mode
     """
-    global img, slfloc, atarget
+    global img, slfloc, atarget, st_mp
 
     res = detect.flag_loc_tp(img)
 
@@ -442,6 +531,8 @@ def flag_move():
         else:
             log("Moving toward flag: {}".format(floc))
             move_toward(floc)
+    elif st_mp:
+        roam()
     else:
         basic_move()
 
@@ -450,13 +541,21 @@ def koh_move():
     None -> None
     Do movement for king of the hill mode
     """
-    global img, slfloc
+    global img, slfloc, st_mp
 
-    hill = detect.hill(img)
+    cm = detect.cur_map
+    if st_mp:
+        hill = detect.static_objs[cm]['hill']
+        if not (detect.lpmp is None) and dist(detect.lpmp, hill) < 3:
+            hill = detect.lpmp
+    else:
+        hill = detect.hill(img)
+        if not (hill is None) and dist(slfloc, hill) < 150:
+            return
 
     if not (hill is None):
         log("Moving to hill: {}".format(hill))
-        move_toward(hill)
+        move_toward(hill, mp=True)
     else:
         basic_move()
 
@@ -741,6 +840,7 @@ def bad_play_switch(on):
     """
     global bad_play
     bad_play = on
+    print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
     save_conf(no_prompt=True)
 
 def inspector():
@@ -749,7 +849,7 @@ def inspector():
     Get information about the current
     game mode, map and result
     """
-    global img, gmode, hp
+    global img, gmode, hp, st_mp
 
     lgrt = None
 
@@ -771,10 +871,12 @@ def inspector():
                 sleep(1)
                 continue
 
-            gmr = detect.detect_mode_map(img)
+            gmr   = detect.detect_mode_map(img)
+            st_mp = detect.cur_map in detect.static_maps
             logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
             if not (gmr is None):
                 gmode = gmr
+
             
             if hp == 0:
                 for _ in range(5):
