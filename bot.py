@@ -380,7 +380,6 @@ def tdm_move():
                     roam()
                 else:
                     random_move()
-                    sleep(uniform(0.3, 1.0))
     else:
         if loenm:
             mvto_nrst("enemy")
@@ -471,8 +470,8 @@ def chkchs_move():
         if st_mp:
             log("Unloading chicks: {} {}".format(len(lobrl), brl))
             detect.update_ploc(img, slfloc)
-            if dist(brl, detect.lpmp) <= 2:
-                if uniform(0.0, 1.0) > 0.99:
+            if dist(brl, detect.lpmp) < 3:
+                if uniform(0.0, 1.0) > 0.95:
                     move_toward(brl, mp=True)
                 else:
                     release_all()
@@ -633,7 +632,7 @@ def attacking():
                 continue
             if bad_play:
                 chnc = uniform(0.0, 1.0)
-                if chnc > 0.995 and loenm:
+                if chnc > 0.99 and loenm:
                     click(loenm[0])
                     sleep(1)
             elif loenm:

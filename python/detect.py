@@ -26,7 +26,7 @@ map_model = None
 map_img   = None
 game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE")
-static_maps    = ("JUTE")
+static_maps    = ("JUTE",)
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -2347,7 +2347,7 @@ static_objs = {
         "hill"   :(28,  9),
         "barrels":[(16, 11), (40, 10)],
         "brls_mp":((0, 1, 0, 0), (1, 0, 0, 0)),
-        "aoi"    :((7, 10), (20, 11), (36, 10), (50, 11))
+        "aoi"    :((7, 10), (20, 12), (36, 12), (50, 10))
         }
 }
 map_points = {
