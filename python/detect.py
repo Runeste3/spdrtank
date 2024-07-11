@@ -727,6 +727,7 @@ GMSR = [
     ("CHICKEN CHASER",   3),
     ("KING OF THE HILL", 4),
     ("HOLD THE FLAG",    5),
+    ("KILL CONFIRMED",   6)
 ]
 
 def gms_to_mode(gms):

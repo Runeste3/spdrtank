@@ -57,7 +57,8 @@ gmode_to_smode = {
     2:"Poultry Pusher",
     3:"Chicken Chaser",
     4:"King of the hill",
-    5:"Hold the flag"
+    5:"Hold the flag",
+    6:"Kill Confirmed"
 }
 
 def log(m):
