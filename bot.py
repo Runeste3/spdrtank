@@ -4,7 +4,7 @@ from cvbot.capture import get_region
 from cvbot.keyboard import listener, kbd, press, add_kf
 from cvbot.mouse import click, ms, msbtn, move
 from threading import Thread, Timer
-from random import randrange, uniform
+from random import randrange, uniform, choice
 from collections import deque
 from datetime import datetime
 from cvbot.windows import find_window, Window
@@ -112,17 +112,23 @@ def sr_cmptv():
     print("Auto-Queue {}!".format("Off" if not cmptv else "On"))
     print("")
 
+last_ppos = None
 def selfloc(img):
     """
     Image -> Point
     Return the location of user tank
     """
+    global last_ppos
     lopps = detect.player(img)
     npps = len(lopps)
     if npps == 0:
-        return CENTER
+        if last_ppos is None:
+            return CENTER
+        else:
+            return last_ppos
     else:
         pps = nearest(slfloc, lopps)
+        last_ppos = pps
 
     return pps 
 
@@ -545,13 +551,13 @@ def koh_move():
 
     cm = detect.cur_map
     if st_mp:
-        hill = detect.static_objs[cm]['hill']
-        if not (detect.lpmp is None) and dist(detect.lpmp, hill) < 3:
-            hill = detect.lpmp
+        hill = choice(detect.static_objs[cm]['hill'])
+        #if not (detect.lpmp is None) and dist(detect.lpmp, hill) < 3:
+        #    hill = detect.lpmp
     else:
         hill = detect.hill(img)
-        if not (hill is None) and dist(slfloc, hill) < 150:
-            return
+        #if not (hill is None) and dist(slfloc, hill) < 150:
+        #    return
 
     if not (hill is None):
         log("Moving to hill: {}".format(hill))
@@ -876,7 +882,6 @@ def inspector():
             logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
             if not (gmr is None):
                 gmode = gmr
-
             
             if hp == 0:
                 for _ in range(5):
