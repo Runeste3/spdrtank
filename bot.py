@@ -571,7 +571,7 @@ def moving():
     Move to the nearest ally if found
     """
     global img, boton, slfloc, atkmode, loenm, loals
-    global running, gmode, bad_play
+    global running, gmode, bad_play, st_mp
 
     while boton:
         if img is None:
@@ -582,7 +582,10 @@ def moving():
             ntrlsd = True
             sleep(0.3)
             if bad_play:
-                basic_move()
+                if st_mp:
+                    roam()
+                else:
+                    basic_move()
             elif gmode == 2:
                 pltry_move()
             elif gmode == 3:
