@@ -1013,26 +1013,33 @@ def switch_cont_random():
     """
     global img
 
-    locp = detect.contracts(img)
-    if locp:
-        if len(locp) >= 3:
-            # random scroll
-            move(CENTER)
-            sleep(0.5)
-            scramt = choice((5, 10, 15, 20, 25, 30, 35, 40, 45, 50))
-            updn   = choice((True, False))
-            print(scramt, updn)
-            for _ in range(scramt):
-                scroll(100, updn, True)
-                sleep(0.1)
-            sleep(1)
+    pos = detect.contracts_btn(img)
+    rcbtn = pos[0], pos[1] + detect.recal(120, ogsz=1600, wonly=True)
+    click(rcbtn)
+    sleep(0.5)
+    # ----- Random contract Selection ----------------------------------
+    #
+    #locp = detect.contracts(img)
+    #if locp:
+    #    if len(locp) >= 3:
+    #        # random scroll
+    #        move(CENTER)
+    #        sleep(0.5)
+    #        scramt = choice((5, 10, 15, 20, 25, 30, 35, 40, 45, 50))
+    #        updn   = choice((True, False))
+    #        print(scramt, updn)
+    #        for _ in range(scramt):
+    #            scroll(100, updn, True)
+    #            sleep(0.1)
+    #        sleep(1)
 
-        # random select of the availabl contracts
-        locp = detect.contracts(img)
-        for _ in range(5):
-            cp = choice(locp)
-            if select_contract(cp):
-                return
+    #    # random select of the availabl contracts
+    #    locp = detect.contracts(img)
+    #    for _ in range(5):
+    #        cp = choice(locp)
+    #        if select_contract(cp):
+    #            return
+    #------------------------------------------------------------------
 
 def switch_cont_top():
     """
@@ -1042,6 +1049,12 @@ def switch_cont_top():
     """
     global img
 
+    move(CENTER)
+    sleep(0.5)
+    for _ in range(50):
+        scroll(100, False, True)
+        sleep(0.1)
+    sleep(0.5)
     locp = detect.contracts(img)
     if locp:
         for cp in locp:
@@ -1306,9 +1319,10 @@ if __name__ == "__main__":
     #          GMREG[3] // 2)
     #slfloc = CENTER
     #bad_play = True
+    #game_played = True
     #img = get_region(GMREG)
-    #rntm = 1
-    #tmtoran = 0
+    #rntm = 0
+    #tmtoran = 1000000
     #Thread(target=switch_contract).start()
     #while True:
     #    img = get_region(GMREG)

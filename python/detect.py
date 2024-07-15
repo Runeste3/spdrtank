@@ -828,7 +828,7 @@ def __record(reg):
 
     while True:
         img = get_region(reg)
-        save_img(img, "__test/_pathing/temple/{}.png".format(i))
+        save_img(img, "__test/_pathing/research/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
