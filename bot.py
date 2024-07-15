@@ -1051,7 +1051,7 @@ def switch_cont_top():
 
     move(CENTER)
     sleep(0.5)
-    for _ in range(50):
+    for _ in range(100):
         scroll(100, False, True)
         sleep(0.1)
     sleep(0.5)
