@@ -68,8 +68,14 @@ gmode_to_smode = {
 def log(m):
     global gmsg
     logger.info(m)
-    gmsg = "[{}] {}...".format(datetime.now().strftime("%M:%S"), 
+    scnds = (time() - strttm) + rntm
+    hrs,  rmscnds = divmod(scnds, 3600)
+    mnts, rmscnds = divmod(rmscnds, 60)
+    gmsg = "[{}] {}...".format("{:02}:{:02}:{:02}".format(round(hrs), 
+                                                 round(mnts),
+                                                 round(rmscnds)), 
                                m)
+    # datetime.now().strftime("%M:%S")
 
 def release_all():
     kbd.release("a")
@@ -740,8 +746,8 @@ def queuer():
     in_game = False
 
     while boton:
-        while running and boton and cmptv:
-            if cmp_prsd and hp > 0:
+        while running and boton:
+            if cmptv and cmp_prsd and hp > 0:
                 in_game = True
                 cmp_prsd = False
                 logger.info("In game")
@@ -751,10 +757,11 @@ def queuer():
                 if not (pbtn is None):
                     if bad_play and game_played:
                         switch_contract()
-                    click(pbtn)
-                    sleep(0.5)
-                    move(CENTER)
-                    sleep(0.5)
+                    if cmptv:
+                        click(pbtn)
+                        sleep(0.5)
+                        move(CENTER)
+                        sleep(0.5)
                 else:
                     cbtn = detect.cmptv_btn(img)
                     if not (cbtn is None):
@@ -762,7 +769,7 @@ def queuer():
                             click_back()
                             sleep(5)
                             switch_contract()
-                        if in_game:
+                        if cmptv and in_game:
                             running = False
                             for _ in range(5):
                                 if boton:
@@ -780,11 +787,12 @@ def queuer():
                             return
 
 
-                        click(cbtn)
-                        sleep(0.5)
-                        move(CENTER)
-                        sleep(0.5)
-                        cmp_prsd = True
+                        if cmptv:
+                            click(cbtn)
+                            sleep(0.5)
+                            move(CENTER)
+                            sleep(0.5)
+                            cmp_prsd = True
             for _ in range(6):
                 if boton:
                     sleep(1) 
@@ -875,12 +883,13 @@ def inspector():
     Get information about the current
     game mode, map and result
     """
-    global img, gmode, hp, st_mp, game_played
+    global img, gmode, hp, st_mp
 
     lgrt = None
 
     def detect_result():
         nonlocal lgrt
+        global game_played
         vdn = detect.victory_defeat(img)
         if vdn == detect.VICTORY:
             log("Victory detected!")
@@ -1067,6 +1076,7 @@ def switch_contract():
     or to the top-most contact
     """
     global bad_play, img, rntm, tmtoran, game_played
+    global strttm
 
     if bad_play and game_played:
         log("Switcher engaged, trying to open garage!")
@@ -1077,7 +1087,7 @@ def switch_contract():
                 log("Contracts visible, {} tanks".format(noc))
                 if noc <= 0:
                     pass
-                elif rntm > tmtoran:
+                elif ((time() - strttm) + rntm) > tmtoran:
                     # Switch Randomly
                     switch_cont_random()
                 else:
@@ -1186,7 +1196,7 @@ def read_conf():
 
 def save_conf(no_prompt=False, save_rt=False):
     global mv_far, HPTHS, ENTHS, running, bad_play, rntm
-    global tmtoran, switcher
+    global tmtoran, switcher, strttm
 
     if not no_prompt:
         running = False
@@ -1214,7 +1224,7 @@ def save_conf(no_prompt=False, save_rt=False):
     conf['tmtoran'] = str(tmtoran)
     conf['mf']      = "1" if mv_far else "0"
     conf['bp']      = "1" if bad_play else "0"
-    conf['rntm']    = "0" if not save_rt else str(rntm)
+    conf['rntm']    = "0" if not save_rt else str((time() - strttm) + rntm)
     conf['swtch']   = "1" if switcher else "0"
 
     with open('config.json', 'w') as f:
@@ -1222,7 +1232,7 @@ def save_conf(no_prompt=False, save_rt=False):
 
 def init():
     global GMREG, CENTER, slfloc, gmode, HPTHS, ENTHS
-    global hwnd, win
+    global hwnd, win, game_played, rntm
 
     logfn = len(listdir("logs"))
     logging.basicConfig(filename="logs/prog_{}.log".format(logfn+1), 
@@ -1247,6 +1257,7 @@ def init():
     detect.init_nr()
 
     read_conf()
+    game_played = rntm != 0
     print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
 
     if 100 > HPTHS > 0 and 100 > ENTHS > 0:
@@ -1302,4 +1313,5 @@ if __name__ == "__main__":
     #while True:
     #    img = get_region(GMREG)
     #    sleep(0.3)
+    #game_played = True
     init()
