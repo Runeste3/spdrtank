@@ -1069,9 +1069,12 @@ def switch_contract():
     global bad_play, img, rntm, tmtoran, game_played
 
     if bad_play and game_played:
+        log("Switcher engaged, trying to open garage!")
         if open_garage():
+            log("Garage opened, opening contracts!")
             if open_contracts():
                 noc = len(detect.contracts(img))
+                log("Contracts visible, {} tanks".format(noc))
                 if noc <= 0:
                     pass
                 elif rntm > tmtoran:
@@ -1082,6 +1085,7 @@ def switch_contract():
                     switch_cont_top()
                 game_played = False
             exit_garage()
+        log("Exitting switcher!")
 
 def printer():
     """
