@@ -979,7 +979,7 @@ def lf_detail_vault(vmap):
 
     h, w = vmap.shape[:2]
 
-    for ((x1, y1, x2, y2), _, name) in loob:
+    for ((_, (x1, y1, x2, y2)), _, name) in loob:
         if "Wall" in name:
             # Pre-efects
             # WALLS
@@ -1038,7 +1038,7 @@ def lf_detail_dc(lfmap):
     """
     global loob
 
-    for ((x1, y1, x2, y2), _, name) in loob:
+    for ((_, (x1, y1, x2, y2)), _, name) in loob:
         if "Bridge" in name:
             if name == "Bridge-2":
                 if y1 > 170: 
@@ -1160,7 +1160,7 @@ def detail_vault(vmap):
 
     h, w = vmap.shape[:2]
 
-    for ((x1, y1, x2, y2), _, name) in loob:
+    for ((_, (x1, y1, x2, y2)), _, name) in loob:
         # Pre-efects
         # WALLS
         if name == "Wall-2":
@@ -1300,7 +1300,7 @@ def detail_dc(vmap):
     bsx, bex = None, None
     h, w = vmap.shape[:2]
     lobyr = []
-    for ((x1, y1, x2, y2), _, name) in loob:
+    for ((_, (x1, y1, x2, y2)), _, name) in loob:
         if "House" in name or "Obstacle" in name:
             # Pre-efects
             if name == "Obstacle-2":
@@ -1852,12 +1852,13 @@ def nearest_b(p, vmap):
 
     return p
 
-def heap_best_path(vmap, sp, ep):
+def heap_best_path(vmap, sp, ep, gap=5):
     """
     bi np im, Point, Point -> list(Point)
     Determine the shortest path from 'sp' to 'ep'
     based on the given map 'vmap'
     """
+    h, w = vmap.shape
     # vmap is of size CSWxCSH, shape CSHxCSW
     sp, ep = nearest_b(sp, vmap), nearest_b(ep, vmap)
     # Point reference book keeping 
@@ -1885,18 +1886,21 @@ def heap_best_path(vmap, sp, ep):
             for y in range(-1, 2):
                 tp = cp[0] + x, cp[1] + y
                 if (tp[0] < 0    or tp[1] < 0    or
-                    tp[0] >= CSW or tp[1] >= CSH or
+                    tp[0] >= w or tp[1] >= h or
                     (x, y) == (0, 0)):
                     continue
                 if tp == ep:
                     return build_lop(ryx, [ep, tp, cp])
                 elif not visited[tp[1], tp[0]] and not iswall[tp[1], tp[0]]:
                     visited[tp[1], tp[0]] = True
-                    wly  = tp[1] - 5 if tp[1] >= 5 else 0
-                    wlx  = tp[0] - 5 if tp[0] >= 5 else 0
-                    wts  = iswall[wly:tp[1]+5, wlx:tp[0]+5].sum() / 5
                     pted = dist(tp, ep)
-                    cost = wts + pted
+                    if gap > 0:
+                        wly  = tp[1] - gap if tp[1] >= gap else 0
+                        wlx  = tp[0] - gap if tp[0] >= gap else 0
+                        wts  = iswall[wly:tp[1]+gap, wlx:tp[0]+gap].sum() / gap
+                        cost = wts + pted
+                    else:
+                        cost = pted
                     ryx[tp[1], tp[0]] = (cp[1], cp[0])
                     heapq.heappush(costs, (cost, tp))
 
@@ -1920,73 +1924,73 @@ def heap_best_path(vmap, sp, ep):
                 return build_lop(ryx, [bpsf,])
 
 
-
-def best_path(vmap, sp, ep):
-    """
-    bi np im, Point, Point -> list(Point)
-    Determine the shortest path from 'sp' to 'ep'
-    based on the given map 'vmap'
-    """
-    # vmap is of size CSWxCSH, shape CSHxCSW
-    sp, ep = nearest_b(sp, vmap), nearest_b(ep, vmap)
-    ryx = np.zeros(vmap.shape[:2] + (2,), dtype=np.uint16)
-    visited = np.zeros(vmap.shape[:2], dtype='bool')
-    visited[:, :] = False
-    visited[sp[1], sp[0]] = True
-    visited[ep[1], ep[0]] = False
-    cost_loc = {}
-    cp = sp
-    bpsf = cp
-    bcsf = None
-    # Testing
-    #svmap = vmap.copy()
-    
-    while True:
-        for x in range(-1, 2):
-            for y in range(-1, 2):
-                tp = cp[0] + x, cp[1] + y
-                if (tp[0] < 0 or tp[1] < 0 or
-                    tp[0] >= CSW or tp[1] >= CSH or
-                    (x, y) == (0, 0)):
-                    continue
-                if tp == ep:
-                    print("Successfully found a route!")
-                    return build_lop(ryx, [ep, tp, cp])
-                elif not visited[tp[1], tp[0]]:
-                    visited[tp[1], tp[0]] = True
-
-                    if vmap[tp[1], tp[0]] == 0:
-                        cost = dist(tp, ep)# + dist(tp, sp))
-                        ryx[tp[1], tp[0]] = (cp[1], cp[0])
-
-                        if cost_loc.get(cost) is None:
-                            cost_loc[cost] = [tp,]
-                        else:
-                            cost_loc[cost].append(tp)
-
-        costs = cost_loc.keys()
-        if len(costs) > 0:
-            min_cost = min(costs)
-            loc = cost_loc[min_cost][0]
-            mloc = loc[1], loc[0]
-
-            cp = mloc[1], mloc[0]
-            if (bcsf is None) or (min_cost < bcsf):
-                bcsf = min_cost
-                bpsf = cp
-
-            cost_loc[min_cost].remove(loc)
-            if len(cost_loc[min_cost]) == 0:
-                del cost_loc[min_cost]
-            # Testing
-            #svmap[mloc] = 255
-            #cv.imshow("Pathing", cv.resize(svmap, (800, 600)))
-            #cv.waitKey(1)
-        else:
-            if bpsf == sp:
-                return [sp, ep]
-            else:
-                return build_lop(ryx, [bpsf,])
+#def best_path(vmap, sp, ep):
+#    """
+#    bi np im, Point, Point -> list(Point)
+#    Determine the shortest path from 'sp' to 'ep'
+#    based on the given map 'vmap'
+#    """
+#    # vmap is of size CSWxCSH, shape CSHxCSW
+#    h, w = vmap.shape
+#    sp, ep = nearest_b(sp, vmap), nearest_b(ep, vmap)
+#    ryx = np.zeros(vmap.shape[:2] + (2,), dtype=np.uint16)
+#    visited = np.zeros(vmap.shape[:2], dtype='bool')
+#    visited[:, :] = False
+#    visited[sp[1], sp[0]] = True
+#    visited[ep[1], ep[0]] = False
+#    cost_loc = {}
+#    cp = sp
+#    bpsf = cp
+#    bcsf = None
+#    # Testing
+#    #svmap = vmap.copy()
+#    
+#    while True:
+#        for x in range(-1, 2):
+#            for y in range(-1, 2):
+#                tp = cp[0] + x, cp[1] + y
+#                if (tp[0] < 0 or tp[1] < 0 or
+#                    tp[0] >= h or tp[1] >= w or
+#                    (x, y) == (0, 0)):
+#                    continue
+#                if tp == ep:
+#                    print("Successfully found a route!")
+#                    return build_lop(ryx, [ep, tp, cp])
+#                elif not visited[tp[1], tp[0]]:
+#                    visited[tp[1], tp[0]] = True
+#
+#                    if vmap[tp[1], tp[0]] == 0:
+#                        cost = dist(tp, ep)# + dist(tp, sp))
+#                        ryx[tp[1], tp[0]] = (cp[1], cp[0])
+#
+#                        if cost_loc.get(cost) is None:
+#                            cost_loc[cost] = [tp,]
+#                        else:
+#                            cost_loc[cost].append(tp)
+#
+#        costs = cost_loc.keys()
+#        if len(costs) > 0:
+#            min_cost = min(costs)
+#            loc = cost_loc[min_cost][0]
+#            mloc = loc[1], loc[0]
+#
+#            cp = mloc[1], mloc[0]
+#            if (bcsf is None) or (min_cost < bcsf):
+#                bcsf = min_cost
+#                bpsf = cp
+#
+#            cost_loc[min_cost].remove(loc)
+#            if len(cost_loc[min_cost]) == 0:
+#                del cost_loc[min_cost]
+#            # Testing
+#            #svmap[mloc] = 255
+#            #cv.imshow("Pathing", cv.resize(svmap, (800, 600)))
+#            #cv.waitKey(1)
+#        else:
+#            if bpsf == sp:
+#                return [sp, ep]
+#            else:
+#                return build_lop(ryx, [bpsf,])
 
 def r_to_d(r): 
     return r * (180/pi)
@@ -2006,23 +2010,30 @@ a_to_d = {
     360:( 1,  0)
 }
 
-def path_to_dr(lop):
+def path_to_dr(lop, max_d=5, custom_steps=()):
     """
     list(Point) -> Direction
     Based on given points decides
     the next direction to move toward
     to follow the path
     """
-    tpi = choice((1, 3, 4, 5, 6, 7, 8, 9, 10, 20))
+    if custom_steps:
+        tpi = choice(custom_steps)
+    else:
+        tpi = choice((1, 3, 4, 5, 6, 7, 8, 9, 10, 20))
+    
     mnp = tpi if len(lop) >= tpi else len(lop)
 
     sp = lop[0]
     if len(lop) <= 1:
         ep = lop[-1]
-    elif dist(sp, lop[1]) < 5:
+    elif dist(sp, lop[1]) < max_d:
         ep = lop[mnp-1]
     else:
         ep = lop[1]
+
+    if dist(sp, ep) < 1:
+        return (0, 0), ep
 
     a, o = ep[0] - sp[0], -(ep[1] - sp[1])
 
@@ -2154,6 +2165,24 @@ objects_mps = {
         "pit-6" :(11,  21),
         "pit-2" :(29,  15),
         "wall-2":(27,   6)
+    },
+    "DECA":{
+        'House-8'   :(14, 11),
+        'House-6'   :(25,  7),
+        'House-7'   :(20, 15),
+        'House-9'   :( 9, 18),
+        'House-10'  :(13, 22),
+        'Obstacle-6':(22, 21),
+        'Obstacle-8':(30, 16),
+        'Bridge-2'  :(34, 13),
+        'Bridge-1'  :(32, 23),
+        'House-2'   :(43, 21),
+        'House-1'   :(54, 16),
+        'House-3'   :(47, 10),
+        'Bridge-3'  :(36,  4),
+        'Obstacle-5':(45,  5),
+        'House-5'   :(55,  2),
+        'House-4'   :(59,  8)
     }
 }
 
@@ -2242,7 +2271,12 @@ def update_ploc(img, ploc):
 
 doobig = {
     '':[],
-    'JUTE':['wall-1', 'wall-3']
+    'JUTE':['wall-1', 'wall-3'],
+    'DECA':["Obstacle-1",
+            "Obstacle-2",
+            "Obstacle-3",
+            "Obstacle-4",
+            "Obstacle-7"]
 }
 
 def map_point(p):
@@ -2252,19 +2286,19 @@ def map_point(p):
     """
     global loob, center, doobig, cur_map
 
-    lppos = []
-    gc   = center 
-    mxd  = dist(gc, (0, 0))
+    lppos  = []
+    gc     = center 
+    mxd    = dist(gc, (0, 0))
     loobig = doobig[cur_map]
 
     for (_, box), _, name in loob:
         if name in loobig:
             continue 
         ow, oh = box[2] - box[0], box[3] - box[1]
-        spos = box[0] + (ow // 2), box[1] + (oh // 2)
+        spos   = box[0] + (ow // 2), box[1] + (oh // 2)
         pcd    = dist(spos, gc)
         weight = round(mxd / (pcd + 1))
-        pap = pred_pos(spos, name, p)
+        pap    = pred_pos(spos, name, p)
         lppos.append((pap, weight))
 
     tp = 0
@@ -2350,6 +2384,7 @@ static_objs = {
         "aoi"    :((7, 10), (20, 12), (36, 12), (50, 10))
         }
 }
+
 map_points = {
     "JUTE":(
         (10, 16),
@@ -2429,9 +2464,18 @@ def mpd_direction(msp, mep):
     Return the direction to follow to get
     to point 'mep'
     """
-    mnp      = next_point(msp,  mep)
-    dr, _    = path_to_dr([msp, mnp])
+    mnp       = next_point(msp,  mep)
+    #path     = heap_best_path(map_img, msp, mep, gap=1)
+    #path     = untangle(  path, map_img)
+    #dr, _    = path_to_dr(path, max_d=2, custom_steps=range(1, 11))
+    dr, _     = path_to_dr([msp, mnp])
 
+    #pthim    = map_img.copy()
+    #pthim    = draw_path(path, pthim)
+    #pthim[msp[1], msp[0]] = 125
+    #pthim[mep[1], mep[0]] = 125
+    #cv.imshow("Test", cv.resize(pthim, (1066, 600)))
+    #cv.waitKey(1)
     #drwmap = map_img.copy()
     #drwmap[msp[1], msp[0]] = 125 
     #drwmap[mnp[1], mnp[0]] = 125 
@@ -2513,6 +2557,82 @@ def rt_direction(img, sp, ep):
     #cv.imshow("vmap",  cv.resize( vmap, (1066, 600)))
     #cv.waitKey(1)
     return dr
+
+grim  = read_img("src/contracts/garage.png",   "grey")
+cntim = read_img("src/contracts/contract.png", "grey")
+
+def contracts(img):
+    """
+    Image -> List of Point
+    Return a list of all contracts positions visible on screen
+    """
+    global cntim
+
+    rcntim = recal(cntim, ogsz=1920, wonly=True)
+    return remove_close(find_all(rcntim, img, 0.8))
+
+def contract_slctd(img, cp):
+    """
+    Image, Point -> bool
+    Return True if the contract in the given position is selected
+    False if not
+    """
+    for x in range(300):
+        clr = img.img[cp[1], cp[0]+x]
+        if clr[0] < 100 and clr[1] > 200:
+            return True
+    return False
+
+piltim   = read_img("src/contracts/pilot.png",         "grey")
+grgbtnim = read_img("src/contracts/garage.png",        "grey")
+pltofim  = read_img("src/contracts/plt_off.png",       "grey")
+cntrim   = read_img("src/contracts/contracts_btn.png", "grey")
+bkbtnim  = read_img("src/contracts/back.png",          "grey")
+
+def in_garage(img):
+    """
+    Image -> bool
+    return True if currently in the garage interface
+    True if not
+    """
+    rpiltim = recal(piltim, ogsz=1920, wonly=True)
+    return not look_for(rpiltim, img, 0.8) is None
+
+def garage_btn(img):
+    """
+    Image -> Point | None
+    Return None if the garage button was not found
+    else return the position on screen of the button
+    """
+    rgrgbtnim = recal(grgbtnim, ogsz=1920, wonly=True)
+    return look_for(rgrgbtnim, img, 0.8)
+
+def pilot_uncheck(img):
+    """
+    Image -> Point | None
+    Return None if the pilot uncheck mark is not visible
+    return its position on screen if its visible
+    """
+    rpltofim = recal(pltofim, ogsz=1920, wonly=True)
+    return look_for(rpltofim, img, 0.9)
+
+def contracts_btn(img):
+    """
+    Image -> Point | None
+    Return None if the 'change contracts' button is not visible
+    or return the button position on screen if it's visible
+    """
+    rcntrim = recal(cntrim, ogsz=1920, wonly=True)
+    return look_for(rcntrim, img, 0.8)
+
+def back_btn(img):
+    """
+    Image -> Point | None
+    Return None if the 'back' button is not visible on screen
+    if it's visible return its location on screen
+    """
+    rbkbtnim = recal(bkbtnim, ogsz=1920, wonly=True)
+    return look_for(rbkbtnim, img, 0.8)
 
 #def _map_sift():
 #    global rltv_sz
@@ -2650,8 +2770,46 @@ def rt_direction(img, sp, ep):
 #    axs[1].hist(green, bins=bins, color='g')
 #    axs[2].hist(blue, bins=bins, color='b')
 #    #plt.show()
+def build_map_memo(pm):
+    global cur_map, center, map_img
+
+    #hwnd = find_window("Spider Tanks", exact=True)
+    #win = Window(hwnd)
+    #win.repos(0, 0)
+    #new_win(win.size)
+    #reg = 0, 0, win.size[0], win.size[1]
+
+    cur_map = pm
+    #load_map_model(pm)
+    #load_chick_model()
+    map_img = cv.imread("src/maps/temple.png", 0)
+
+    #center = round(reg[2] / 2), round(reg[3] / 2)
+    h, w   = map_img.shape
+    #file = open('JUTE.memo', 'wb')
+    #memo = pickle.load(file)
+    memo   = {}
+
+    st = time()
+    for sx in range(w):
+        for sy in range(h):
+            for ex in range(w):
+                for ey in range(h):
+                    msp = (sx, sy)
+                    mep = (ex, ey)
+                    path     = heap_best_path(map_img, msp, mep, no_gap=True)
+                    path     = untangle(  path, map_img)
+                    memo[(msp, mep)] = path[1:6]
+        print((sx, sy), (ex, ey))
+        print("Time elapsed so far: {}".format(time() - st))
+    
+    file = open('JUTE.memo', 'wb')
+    pickle.dump(memo, file)
+    file.close()
+
 
 if __name__ == "__main__":
+    import pickle
     from cvbot.capture import screenshot , get_region
     from cvbot._screen import MON
     from cvbot.io import read_img
@@ -2667,7 +2825,38 @@ if __name__ == "__main__":
     from matplotlib import cm
     from matplotlib import colors
 
+    #hwnd = find_window("Spider Tanks", exact=True)
+    #win = Window(hwnd)
+    #win.repos(0, 0)
+    #new_win(win.size)
+    #reg = 0, 0, win.size[0], win.size[1]
 
+    #img = get_region(reg)
+    #loc = contracts(img)
+    #for con in loc:
+    #    if contract_slctd(img, con):
+    #        print("Contract {} is selected!".format(con))
+    #quit()
+    #build_map_memo("JUTE")
+    #quit()
+    #print("\nLoading paths")
+    #st = time()
+    #with open("JUTE.memo", "rb") as mf:
+    #    memo = pickle.load(mf)
+    #    with lzma.open("JUTE.xz", "wb") as lf:
+    #        pickle.dump(memo, lf)
+    #    lt = time() - st
+    #    print(memo[(7, 10), (28, 9)])
+    #print("Took {} to load".format(lt))
+    #quit()
+    #st = time()
+    #with lzma.open("JUTE.xz", "rb") as pf:
+    #    memo = pickle.load(pf)
+    #    #data = pf.read()
+    #    lt = time() - st
+    #    print(memo[(7, 10), (28, 9)])
+    #print("Took {} to load".format(lt))
+    #quit()
     hwnd = find_window("Spider Tanks", exact=True)
     win = Window(hwnd)
     win.repos(0, 0)
@@ -2676,16 +2865,17 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    pm = "JUTE"
+    pm = "DECA"
     cur_map = pm
     load_map_model(pm)
-    load_chick_model()
+    #load_chick_model()
 
     # Width x Height: 50 x 20
     # Pit-1  -> 16, 10
     # Pit-4  -> 14, -2
 
     center = round(reg[2] / 2), round(reg[3] / 2)
+
 
     while True:
         img = get_region(reg)
@@ -2702,16 +2892,25 @@ if __name__ == "__main__":
             ppos = ppos[0]
 
         loob = map_objs(img)
-        mp = map_point(ppos)
+        mp   = map_point(ppos)
         if mp is None:
             print("Map point is none for ppos: " + str(ppos))
             sleep(1)
             continue
-        chks = locate_chicks(img)
+
+        for (_, box), _, name in loob:
+            ow, oh = box[2] - box[0], box[3] - box[1]
+            spos   = box[0] + (ow // 2), box[1] + (oh // 2)
+            img.img = cv.drawMarker(img.img, spos, (0, 255, 0), 
+                                    cv.MARKER_DIAMOND, 50, 5)
+            img.img = cv.putText(img.img, name, (spos[0], spos[1] - 10),
+                                 cv.FONT_HERSHEY_COMPLEX, 
+                                 1, (0, 255, 0), 3)
+        #chks = locate_chicks(img)
         tmim = cv.imread("tmap.png", 0)
-        for chk in chks:
-            cmp = map_point(chk)
-            tmim[cmp[1], cmp[0]] = 125
+        #for chk in chks:
+        #    cmp = map_point(chk)
+        #    tmim[cmp[1], cmp[0]] = 125
 
         tmim[mp[1], mp[0]] = 125
         #objs.append((ppos, "player"))

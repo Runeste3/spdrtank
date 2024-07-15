@@ -99,7 +99,7 @@ class Model:
 
                 name = self.classes[int(id)]
 
-                toadd = (box, scr, name)
+                toadd = (([], box), scr, name)
 
                 noutputs.append(toadd)
 
@@ -143,7 +143,7 @@ class Model:
 
             scr = scores[i]
             name = self.classes[ids[i]]
-            result = (mask, (x1, x2, y1, y2), scr, name)
+            result = ((mask, (x1, x2, y1, y2)), scr, name)
             results.append(result)
 
         return results

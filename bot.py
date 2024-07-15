@@ -2,7 +2,7 @@ from math import dist
 from time import sleep, time
 from cvbot.capture import get_region
 from cvbot.keyboard import listener, kbd, press, add_kf
-from cvbot.mouse import click, ms, msbtn, move
+from cvbot.mouse import click, ms, msbtn, move, scroll
 from threading import Thread, Timer
 from random import randrange, uniform, choice
 from collections import deque
@@ -22,6 +22,9 @@ import traceback
 logger = logging.getLogger(__name__)
 
 DQSZ = 20
+strttm = time()
+rntm   = 0
+tmtoran = 3600 * 8 # 8 Hours
 bad_play = False
 mv_far = False
 boton = True
@@ -30,6 +33,7 @@ gmsg = ""
 cmptv = True 
 img = None
 st_mp = False
+switcher = False
 hp, energy = 0, 0 
 xyd = [0, 0]
 atkmode = 1
@@ -87,6 +91,7 @@ def botoff():
 
 def reset():
     botoff()
+    save_conf(no_prompt=True, save_rt=True)
     sleep(5)
     subprocess.call(['python\python', 'bot.py'], shell=True)
 
@@ -744,10 +749,18 @@ def queuer():
             if not (img is None):
                 pbtn = detect.play_btn(img)
                 if not (pbtn is None):
+                    if bad_play and game_played:
+                        switch_contract()
                     click(pbtn)
+                    sleep(0.5)
+                    move(CENTER)
+                    sleep(0.5)
                 else:
                     cbtn = detect.cmptv_btn(img)
                     if not (cbtn is None):
+                        if bad_play and game_played:
+                            click_back()
+                            switch_contract()
                         if in_game:
                             running = False
                             for _ in range(5):
@@ -767,6 +780,9 @@ def queuer():
 
 
                         click(cbtn)
+                        sleep(0.5)
+                        move(CENTER)
+                        sleep(0.5)
                         cmp_prsd = True
             for _ in range(6):
                 if boton:
@@ -858,7 +874,7 @@ def inspector():
     Get information about the current
     game mode, map and result
     """
-    global img, gmode, hp, st_mp
+    global img, gmode, hp, st_mp, game_played
 
     lgrt = None
 
@@ -868,10 +884,12 @@ def inspector():
         if vdn == detect.VICTORY:
             log("Victory detected!")
             bad_play_switch(True)
+            game_played = True
             lgrt = time()
         elif vdn == detect.DEFEAT:
             log("Defeat detected!")
             bad_play_switch(False)
+            game_played = True
             lgrt = time()
 
     while boton:
@@ -899,6 +917,170 @@ def inspector():
                             detect_result()
                         sleep(1)
         sleep(1)
+
+def open_garage():
+    """
+    None -> bool
+    Return True if the garage was opened
+    False if not
+    """
+    for _ in range(10):
+        if not detect.in_garage(img):
+            gbtn = detect.garage_btn(img)
+            if gbtn is None:
+                sleep(1)
+            else:
+                click(gbtn)
+                sleep(0.5)
+                move(CENTER)
+                sleep(0.5)
+        else:
+            return True
+    return False
+
+def open_contracts():
+    """
+    None -> bool
+    Return True if the contacts menu was opened
+    False if not
+    """
+    for _ in range(5):
+        pchk = detect.pilot_uncheck(img)
+        if not (pchk is None):
+            click(pchk)
+            sleep(0.5)
+            move(CENTER)
+        else:
+            break
+        sleep(1)
+    for _ in range(5):
+        cbtn = detect.contracts_btn(img)
+        if not (cbtn is None):
+            click(cbtn)
+            sleep(0.5)
+            move(CENTER)
+            locp = detect.contracts(img)
+            if locp:
+                return True
+        else:
+            break
+        sleep(1)
+    return False
+
+def click_back():
+    """
+    None -> None
+    Click the back button if it's visible
+    """
+    for _ in range(3):
+        pos = detect.back_btn(img)
+        if not (pos is None):
+            click(pos)
+            sleep(0.5)
+            move(CENTER)
+            sleep(0.5)
+
+def exit_garage():
+    """
+    None -> None
+    Exit the garage menu
+    """
+    global img
+
+    while detect.in_garage(img):
+        click((detect.rltv_szu[0]//3, 60))
+        sleep(0.5)
+        bbtn = detect.back_btn(img)
+        if not (bbtn is None):
+            click(bbtn)
+            sleep(1)
+
+def switch_cont_random():
+    """
+    None -> None
+    ASSUMES CONTRACTS MENU IS OPEN
+    Switch to a random non-selected contract
+    """
+    global img
+
+    locp = detect.contracts(img)
+    if locp:
+        if len(locp) >= 3:
+            # random scroll
+            move(CENTER)
+            sleep(0.5)
+            scramt = choice((5, 10, 15, 20, 25, 30, 35, 40, 45, 50))
+            updn   = choice((True, False))
+            print(scramt, updn)
+            for _ in range(scramt):
+                scroll(100, updn, True)
+                sleep(0.1)
+            sleep(1)
+
+        # random select of the availabl contracts
+        locp = detect.contracts(img)
+        for _ in range(5):
+            cp = choice(locp)
+            if select_contract(cp):
+                return
+
+def switch_cont_top():
+    """
+    None -> None
+    ASSUMES CONTRACTS MENU IS OPEN
+    Switch to the top-most non-selected contract
+    """
+    global img
+
+    locp = detect.contracts(img)
+    if locp:
+        for cp in locp:
+            if select_contract(cp):
+                return
+
+def select_contract(cp):
+    """
+    Point -> bool
+    Return True if the contract with given position 'cp'
+    is currently select, False otherwise
+    """
+    global img
+
+    if not detect.contract_slctd(img, cp):
+        for _ in range(5):
+            click(cp)
+            sleep(0.5)
+            move((0, 0))
+            sleep(0.5)
+            if len(detect.contracts(img)) == 0:
+                return True
+
+    return False
+
+game_played = False
+
+def switch_contract():
+    """
+    None -> None
+    Switch the current tank contract either randomly
+    or to the top-most contact
+    """
+    global bad_play, img, rntm, tmtoran, game_played
+
+    if bad_play and game_played:
+        if open_garage():
+            if open_contracts():
+                noc = len(detect.contracts(img))
+                if noc <= 0:
+                    pass
+                elif rntm > tmtoran:
+                    # Switch Randomly
+                    switch_cont_random()
+                else:
+                    # Switch to top-most
+                    switch_cont_top()
+                game_played = False
+            exit_garage()
 
 def printer():
     """
@@ -978,23 +1160,28 @@ def run():
         sleep(1)
 
 def read_conf():
-    global HPTHS, ENTHS, mv_far, bad_play
+    global HPTHS, ENTHS, mv_far, bad_play, rntm, tmtoran 
+    global switcher
 
     try:
         with open('config.json', 'r') as f:
             conf = json.load(f)
 
-        HPTHS = int(conf['hpt'])
-        ENTHS = int(conf['ent'])
-        mv_far = conf['mf'] == "1"
+        HPTHS    = int(conf['hpt'])
+        ENTHS    = int(conf['ent'])
+        mv_far   = conf['mf'] == "1"
         bad_play = conf['bp'] == "1"
+        rntm     = float(conf['rntm'])
+        tmtoran  = int(conf['tmtoran'])
+        switcher = conf['swtch'] == "1"
     except:
         print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
         save_conf()
         read_conf()
 
-def save_conf(no_prompt=False):
-    global mv_far, HPTHS, ENTHS, running, bad_play
+def save_conf(no_prompt=False, save_rt=False):
+    global mv_far, HPTHS, ENTHS, running, bad_play, rntm
+    global tmtoran, switcher
 
     if not no_prompt:
         running = False
@@ -1002,23 +1189,28 @@ def save_conf(no_prompt=False):
         sleep(0.5)
 
         print("\n")
-        HPTHS, ENTHS = "", ""
+        HPTHS, ENTHS, tmtoran = "", "", ""
 
         while not (HPTHS.isnumeric() and ENTHS.isnumeric()):
-            HPTHS, ENTHS = (input("HP threshold(0-100): "), 
-                            input("Energy threshold(0-100): "))
-        HPTHS, ENTHS = int(HPTHS), int(ENTHS)
-        mv_far = input("Follow the closest teammate? Y/N: ").lower() == "n"
+            HPTHS, ENTHS, tmtoran = (input("HP threshold(0-100): "), 
+                                     input("Energy threshold(0-100): "),
+                                     input("Hours to select random contract: "))
+        HPTHS, ENTHS, tmtoran = int(HPTHS), int(ENTHS), int(float(tmtoran) * 3600)
+        mv_far   = input("Follow the closest teammate? Y/N: ").lower() == "n"
+        switcher = input("Switch tank/contracts? Y/N: ").lower() == "y"
 
         print("\n")
 
         running = True
 
     conf = {}
-    conf['hpt'] = str(HPTHS)
-    conf['ent'] = str(ENTHS)
-    conf['mf']  = "1" if mv_far else "0"
-    conf['bp']  = "1" if bad_play else "0"
+    conf['hpt']     = str(HPTHS)
+    conf['ent']     = str(ENTHS)
+    conf['tmtoran'] = str(tmtoran)
+    conf['mf']      = "1" if mv_far else "0"
+    conf['bp']      = "1" if bad_play else "0"
+    conf['rntm']    = "0" if not save_rt else str(rntm)
+    conf['swtch']   = "1" if switcher else "0"
 
     with open('config.json', 'w') as f:
         json.dump(conf, f)
@@ -1084,4 +1276,25 @@ if __name__ == "__main__":
     #    i += 1
     #    return img
     #-------------------
+    #hwnd = find_window("Spider Tanks", exact=True)
+    #win = Window(hwnd)
+    #win.repos(0, 0)
+    #detect.new_win(win.size)
+    #reg = 0, 0, win.size[0], win.size[1]
+    #GMREG  = (
+    #    0, 0, 
+    #    win.size[0] if win.size[0] < detect.MON['width']  else detect.MON['width'], 
+    #    win.size[1] if win.size[1] < detect.MON['height'] else detect.MON['height']
+    #)
+    #CENTER = (GMREG[2] // 2,
+    #          GMREG[3] // 2)
+    #slfloc = CENTER
+    #bad_play = True
+    #img = get_region(GMREG)
+    #rntm = 1
+    #tmtoran = 0
+    #Thread(target=switch_contract).start()
+    #while True:
+    #    img = get_region(GMREG)
+    #    sleep(0.3)
     init()
