@@ -665,8 +665,8 @@ def locate_chicks(img):
     """
     if not (chk_model is None):
         out = chk_model.detect(img, 0.4) # list((box, scr, name))
-        lopos = [(o[0][0] + (o[0][2] - o[0][0]), 
-                o[0][1] + (o[0][3] - o[0][1])) for o in out]
+        lopos = [(o[0][1][0] + (o[0][1][2] - o[0][1][0]), 
+                  o[0][1][1] + (o[0][1][3] - o[0][1][1])) for o in out]
         return lopos
     else:
         load_chick_model()
