@@ -343,9 +343,9 @@ def roam():
     Move to an area of interest
     and away from enemies
     """
-    global loenm, slfloc
+    global loenm, slfloc, atkmode
 
-    if loenm and sort_near(slfloc, loenm)[0][1] < 400:
+    if atkmode == 1 and loenm and sort_near(slfloc, loenm)[0][1] < 400:
         mp = best_aoi(loenm)
     else:
         mp = next_aoi()
@@ -482,7 +482,7 @@ def chkchs_move():
             log("Unloading chicks: {} {}".format(len(lobrl), brl))
             detect.update_ploc(img, slfloc)
             if dist(brl, detect.lpmp) < 3:
-                if uniform(0.0, 1.0) > 0.95:
+                if uniform(0.0, 1.0) > 0.8:
                     move_toward(brl, mp=True)
                 else:
                     release_all()

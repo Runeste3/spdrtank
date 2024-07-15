@@ -26,7 +26,7 @@ map_model = None
 map_img   = None
 game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE")
-static_maps    = ("JUTE",)
+static_maps    = ("JUTE", "DECA")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1662,6 +1662,7 @@ def load_map_model(pm):
     global map_model, map_img
 
     if pm == "DECA":
+        map_img   = cv.imread("src/maps/desert.png", 0)
         map_model = Model("src/models/desert.onnx", ["House-1",
                                             "House-2",
                                             "House-3",
@@ -2288,7 +2289,7 @@ def map_point(p):
 
     lppos  = []
     gc     = center 
-    mxd    = dist(gc, (0, 0))
+    mxd    = dist(gc, (0, 0)) ** 2
     loobig = doobig[cur_map]
 
     for (_, box), _, name in loob:
@@ -2296,7 +2297,7 @@ def map_point(p):
             continue 
         ow, oh = box[2] - box[0], box[3] - box[1]
         spos   = box[0] + (ow // 2), box[1] + (oh // 2)
-        pcd    = dist(spos, gc)
+        pcd    = dist(spos, gc) ** 2
         weight = round(mxd / (pcd + 1))
         pap    = pred_pos(spos, name, p)
         lppos.append((pap, weight))
@@ -2382,7 +2383,14 @@ static_objs = {
         "barrels":[(16, 11), (40, 10)],
         "brls_mp":((0, 1, 0, 0), (1, 0, 0, 0)),
         "aoi"    :((7, 10), (20, 12), (36, 12), (50, 10))
-        }
+        },
+    "DECA":{
+        "hill":((35, 12), (35, 13)),
+        "barrels":[(47, 9), (21, 17)],
+        "brls_mp":((0, 0, 0, 0), (0, 0, 0, 0)),
+        "aoi"    :((13, 15), (19, 8), (24, 19), (27, 12),
+                   (43, 8), (41, 15), (49, 17), (54, 10))
+    }
 }
 
 map_points = {
@@ -2405,6 +2413,45 @@ map_points = {
         (40, 16),
         (46,  5),
         (46, 16)
+    ),
+    "DECA":(
+        ( 5, 19),
+        ( 6, 14),
+        ( 6, 22),
+        (11,  9),
+        (11, 14),
+        (10, 22),
+        (19,  8),
+        (16, 17),
+        (19, 21),
+        (24, 11),
+        (23, 17),
+        (22, 23),
+        (29,  3),
+        (29, 10),
+        (29, 14),
+        (28, 23),
+        (35,  3),
+        (35, 11),
+        (35, 14),
+        (36, 23),
+        (42,  3),
+        (41, 12),
+        (39, 19),
+        (47,  3),
+        (45,  8),
+        (44, 16),
+        (49,  5),
+        (48, 18),
+        (50, 14),
+        (52,  8),
+        (56,  6),
+        (55, 12),
+        (54, 19),
+        (60,  4),
+        (60, 13),
+        (63,  6),
+        (62, 11)
     )
 }
 
@@ -2907,7 +2954,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("tmap.png", 0)
+        tmim = cv.imread("src/maps/desert.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
