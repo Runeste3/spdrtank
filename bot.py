@@ -760,6 +760,7 @@ def queuer():
                     if not (cbtn is None):
                         if bad_play and game_played:
                             click_back()
+                            sleep(5)
                             switch_contract()
                         if in_game:
                             running = False
