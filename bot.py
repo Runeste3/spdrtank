@@ -740,7 +740,7 @@ def queuer():
     None -> None
     Join competitive queue automatically
     """
-    global boton, running, cmptv, img, hp
+    global boton, running, cmptv, img, hp, switcher
 
     cmp_prsd = False
     in_game = False
@@ -755,7 +755,7 @@ def queuer():
             if not (img is None):
                 pbtn = detect.play_btn(img)
                 if not (pbtn is None):
-                    if bad_play and game_played:
+                    if switcher and bad_play and game_played:
                         switch_contract()
                     if cmptv:
                         click(pbtn)
@@ -765,7 +765,7 @@ def queuer():
                 else:
                     cbtn = detect.cmptv_btn(img)
                     if not (cbtn is None):
-                        if bad_play and game_played:
+                        if switcher and bad_play and game_played:
                             click_back()
                             sleep(5)
                             switch_contract()

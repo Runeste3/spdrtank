@@ -824,7 +824,7 @@ def hill(img):
     
 def __record(reg):
     sleep(3)
-    i = 0 
+    i = 646
 
     while True:
         img = get_region(reg)
@@ -2872,11 +2872,13 @@ if __name__ == "__main__":
     from matplotlib import cm
     from matplotlib import colors
 
-    #hwnd = find_window("Spider Tanks", exact=True)
-    #win = Window(hwnd)
-    #win.repos(0, 0)
-    #new_win(win.size)
-    #reg = 0, 0, win.size[0], win.size[1]
+    hwnd = find_window("Spider Tanks", exact=True)
+    win = Window(hwnd)
+    win.repos(0, 0)
+    new_win(win.size)
+    reg = 0, 0, win.size[0], win.size[1]
+    __record(reg)
+    quit()
 
     #img = get_region(reg)
     #loc = contracts(img)
