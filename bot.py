@@ -103,6 +103,14 @@ def botoff():
         print("Waiting for bot loops to exit...")
         print("\n")
 
+def switch_switcher():
+    global switcher
+    switcher = not switcher
+    print("\n")
+    print("Tank Switcher is {}".format("ON" if switcher else "OFF"))
+    print("\n")
+    save_conf(no_prompt=True, save_rt=False)
+
 def reset():
     botoff()
     save_conf(no_prompt=True, save_rt=True)
@@ -1291,9 +1299,11 @@ def init():
         # Turn automatic competitive queue joining on/off
         add_kf("m", sr_cmptv)
         # Edit user preferences
-        add_kf("z", save_conf)
+        add_kf("y", save_conf)
         # Switch win trade target for the next game win/lose
         add_kf("x", win_trade)
+        # Switch tank switcher on or off
+        add_kf("l", switch_switcher)
 
         listener()
 
@@ -1336,5 +1346,4 @@ if __name__ == "__main__":
     #while True:
     #    img = get_region(GMREG)
     #    sleep(0.3)
-    #game_played = True
     init()
