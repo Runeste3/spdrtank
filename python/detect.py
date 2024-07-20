@@ -25,7 +25,7 @@ chk_model = None
 map_model = None
 map_img   = None
 game_mode = None
-supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE")
+supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE")
 static_maps    = ("JUTE", "DECA")
 # ---------------- Classes ------------------
 class Weapon:
@@ -1726,6 +1726,8 @@ def load_map_model(pm):
     elif pm == "JUTE":
         map_model = Model("src/models/temple.pt")
         map_img   = cv.imread("src/maps/temple.png", 0)
+    elif pm == "FRRE":
+        map_model = Model("src/models/research.pt")
 
 def map_objs(img):
     """
