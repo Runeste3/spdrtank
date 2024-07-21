@@ -26,7 +26,7 @@ map_model = None
 map_img   = None
 game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE")
-static_maps    = ("JUTE", "DECA")
+static_maps    = ("JUTE", "DECA", "FRRE")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1728,6 +1728,7 @@ def load_map_model(pm):
         map_img   = cv.imread("src/maps/temple.png", 0)
     elif pm == "FRRE":
         map_model = Model("src/models/research.pt")
+        map_img   = cv.imread("src/maps/research.png", 0)
 
 def map_objs(img):
     """
@@ -2186,6 +2187,23 @@ objects_mps = {
         'Obstacle-5':(45,  5),
         'House-5'   :(55,  2),
         'House-4'   :(59,  8)
+    },
+    "FRRE":{
+        'wall-1' :(18, 18),
+        'wall-2' :(28, 13),
+        'wall-3' :(24, 23),
+        'wall-4' :(35, 35),
+        'wall-5' :(33, 31),
+        'wall-6' :(44, 30),
+        'wall-7' :(28, 27),
+        'wall-8' :(15, 26),
+        'wall-9' :(36, 24),
+        'wall-10':(35, 18),
+        'wall-11':(46, 20),
+        'pit-1'  :(16, 23),
+        'pit-2'  :(25, 29),
+        'pit-3'  :(38, 16),
+        'pit-4'  :(46, 23)
     }
 }
 
@@ -2270,7 +2288,8 @@ def pred_pos(osp, name, psp):
 def update_ploc(img, ploc):
     global lpmp, loob
     loob = map_objs(img) 
-    lpmp = map_point(ploc)
+    mp = map_point(ploc)
+    lpmp = lpmp if mp is None else mp
 
 doobig = {
     '':[],
@@ -2279,7 +2298,8 @@ doobig = {
             "Obstacle-2",
             "Obstacle-3",
             "Obstacle-4",
-            "Obstacle-7"]
+            "Obstacle-7"],
+    'FRRE':[]
 }
 
 def map_point(p):
@@ -2392,6 +2412,14 @@ static_objs = {
         "brls_mp":((0, 0, 0, 0), (0, 0, 0, 0)),
         "aoi"    :((13, 15), (19, 8), (24, 19), (27, 12),
                    (43, 8), (41, 15), (49, 17), (54, 10))
+    },
+    "FRRE":{
+        'hill'   :((32, 14), (32, 15), (32, 16)),
+        'barrels':[(27, 19), (38, 29)],
+        'brls_mp':((0, 0, 0, 0), (0, 0, 0, 0)),
+        'aoi'    :((21, 13), (30, 21), (18, 28), (36, 10),
+                   (41, 21), (31, 28), (30, 35), (39, 28),
+                   (43, 35), (50, 29), (50, 21))
     }
 }
 
@@ -2454,6 +2482,42 @@ map_points = {
         (60, 13),
         (63,  6),
         (62, 11)
+    ),
+    'FRRE':(
+        (12, 25),
+        (12, 20),
+        (17, 15),
+        (15, 28),
+        (22, 15),
+        (21, 20),
+        (21, 26),
+        (21, 31),
+        (24, 11),
+        (25, 18),
+        (25, 26),
+        (27, 32),
+        (28, 23),
+        (30, 19),
+        (32, 15),
+        (28,  8),
+        (34,  8),
+        (37, 11),
+        (35, 20),
+        (31, 27),
+        (32, 37),
+        (37, 37),
+        (40, 35),
+        (39, 31),
+        (38, 26),
+        (40, 23),
+        (42, 17),
+        (42, 11),
+        (47, 15),
+        (44, 26),
+        (46, 34),
+        (50, 32),
+        (50, 26),
+        (50, 19) 
     )
 }
 
@@ -2874,13 +2938,13 @@ if __name__ == "__main__":
     from matplotlib import cm
     from matplotlib import colors
 
-    hwnd = find_window("Spider Tanks", exact=True)
-    win = Window(hwnd)
-    win.repos(0, 0)
-    new_win(win.size)
-    reg = 0, 0, win.size[0], win.size[1]
-    __record(reg)
-    quit()
+    #hwnd = find_window("Spider Tanks", exact=True)
+    #win = Window(hwnd)
+    #win.repos(0, 0)
+    #new_win(win.size)
+    #reg = 0, 0, win.size[0], win.size[1]
+    #__record(reg)
+    #quit()
 
     #img = get_region(reg)
     #loc = contracts(img)
@@ -2916,7 +2980,7 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    pm = "DECA"
+    pm = "FRRE"
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -2958,7 +3022,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/desert.png", 0)
+        tmim = cv.imread("src/maps/research.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125

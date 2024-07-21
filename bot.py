@@ -506,7 +506,7 @@ def chkchs_move():
             log("Unloading chicks: {} {}".format(len(lobrl), brl))
             detect.update_ploc(img, slfloc)
             if dist(brl, detect.lpmp) < 3:
-                if uniform(0.0, 1.0) > 0.8:
+                if uniform(0.0, 1.0) > 0.7:
                     move_toward(brl, mp=True)
                 else:
                     release_all()
