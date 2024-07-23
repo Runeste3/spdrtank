@@ -139,6 +139,17 @@ def sr_cmptv():
     print("Auto-Queue {}!".format("Off" if not cmptv else "On"))
     print("")
 
+def cancel_queue():
+    global img
+    print("")
+    pos = detect.cancel_btn(img)
+    if not (pos is None):
+        print("Canceling queue...")
+        click(pos)
+    else:
+        print("Cancel button not found!")
+    print("")
+
 last_ppos = None
 def selfloc(img):
     """
@@ -1304,6 +1315,8 @@ def init():
         add_kf("x", win_trade)
         # Switch tank switcher on or off
         add_kf("l", switch_switcher)
+        # Click 'cancel queue' button
+        add_kf("t", cancel_queue)
 
         listener()
 

@@ -25,7 +25,7 @@ chk_model = None
 map_model = None
 map_img   = None
 game_mode = None
-supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE")
+supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE")#, "FOCI")
 static_maps    = ("JUTE", "DECA", "FRRE")
 # ---------------- Classes ------------------
 class Weapon:
@@ -474,6 +474,16 @@ NOIM  = read_img("src/queue/nobtn.png",    "grey")
 RTRIM = read_img("src/queue/rtrbtn.png",   "grey")
 VCTIM = read_img("src/queue/vctbnr.png",   "grey")
 DFTIM = read_img("src/queue/dftbnr.png",   "grey")
+CNCIM = read_img("src/queue/cnclbtn.png",  "grey")
+
+def cancel_btn(img):
+    """
+    Image -> Point | None
+    Return cancel position on screen if it's found
+    if not return None
+    """
+    rcncim = recal(CNCIM, ogsz=1920, wonly=True)
+    return look_for(rcncim, img, 0.8)
 
 def play_btn(img):
     """
@@ -824,11 +834,11 @@ def hill(img):
     
 def __record(reg):
     sleep(3)
-    i = 646
+    i = 0 
 
     while True:
         img = get_region(reg)
-        save_img(img, "__test/_pathing/research/{}.png".format(i))
+        save_img(img, "__test/_pathing/forsaken/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -1729,6 +1739,8 @@ def load_map_model(pm):
     elif pm == "FRRE":
         map_model = Model("src/models/research.pt")
         map_img   = cv.imread("src/maps/research.png", 0)
+    #elif pm == "FOCI":
+    #    map_model = Model("src/models/forsaken.pt")
 
 def map_objs(img):
     """
@@ -2395,8 +2407,14 @@ def aoi_random():
     if not (lvaoi[0] is None) and (time() - lvaoi[1]) < 10:
         return lvaoi[0]
 
-    aoi = choice(static_objs[cur_map]['aoi'])
+    lopp  = static_objs[cur_map]['aoi']
+    if not (lvaoi[0] is None):
+        li    = lopp.index(lvaoi[0])
+        lopp  = lopp[:li] + lopp[li+1:]
+
+    aoi   = choice(lopp)
     lvaoi = aoi, time()
+
     return aoi
 
 static_objs = {
@@ -2442,7 +2460,7 @@ map_points = {
         (40,  5),
         (40, 16),
         (46,  5),
-        (46, 16)
+        (47, 16)
     ),
     "DECA":(
         ( 5, 19),
@@ -2980,7 +2998,7 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    pm = "FRRE"
+    pm = "FOCI"
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -3022,7 +3040,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/research.png", 0)
+        tmim = cv.imread("src/maps/forsaken.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
