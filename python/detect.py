@@ -1605,13 +1605,14 @@ def detect_mode_map(img):
         mds, mps = "", ""
     
     if mds != "" and mps != "":
-        global cur_map, game_mode
+        global cur_map, game_mode, lvaoi
         prsd_map = mn_to_mp(mps)
         prsd_mode = gms_to_mode(mds)
         game_mode = prsd_mode
         if cur_map != prsd_map:
             print("\n Loading map model... \n")
             load_map_model(prsd_map)
+            lvaoi = None, time() 
         cur_map = prsd_map
         if game_mode == 3:
             load_chick_model()
