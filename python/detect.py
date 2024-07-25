@@ -2666,11 +2666,11 @@ def mpd_direction(msp, mep):
     #pthim[mep[1], mep[0]] = 125
     #cv.imshow("Test", cv.resize(pthim, (1066, 600)))
     #cv.waitKey(1)
-    drwmap = map_img.copy()
-    drwmap[msp[1], msp[0]] = 125 
-    drwmap[mnp[1], mnp[0]] = 125 
-    cv.imshow("map", cv.resize(drwmap, (1066, 600)))
-    cv.waitKey(1)
+    #drwmap = map_img.copy()
+    #drwmap[msp[1], msp[0]] = 125 
+    #drwmap[mnp[1], mnp[0]] = 125 
+    #cv.imshow("map", cv.resize(drwmap, (1066, 600)))
+    #cv.waitKey(1)
     return dr
 
 CHK_CLCT_IM = read_img('src/modes/chk_clctd.png')
