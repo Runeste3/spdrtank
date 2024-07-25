@@ -25,8 +25,8 @@ chk_model = None
 map_model = None
 map_img   = None
 game_mode = None
-supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE")#, "FOCI")
-static_maps    = ("JUTE", "DECA", "FRRE")
+supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", "FOCI")
+static_maps    = ("JUTE", "DECA", "FRRE", "FOCI")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1740,8 +1740,9 @@ def load_map_model(pm):
     elif pm == "FRRE":
         map_model = Model("src/models/research.pt")
         map_img   = cv.imread("src/maps/research.png", 0)
-    #elif pm == "FOCI":
-    #    map_model = Model("src/models/forsaken.pt")
+    elif pm == "FOCI":
+        map_model = Model("src/models/forsaken.pt")
+        map_img   = cv.imread("src/maps/forsaken.png", 0)
 
 def map_objs(img):
     """
@@ -2217,6 +2218,18 @@ objects_mps = {
         'pit-2'  :(25, 29),
         'pit-3'  :(38, 16),
         'pit-4'  :(46, 23)
+    },
+    "FOCI":{
+        'wall-1' :(46, 23), 
+        'wall-3' :(38, 24), 
+        'wall-4' :(34, 29),
+        'wall-5' :(43, 12),
+        #'wall-6' :(44,  4),
+        'wall-7' :(35, 13),
+        'wall-8' :(28, 12),
+        'wall-9' :(14, 10),
+        'wall-10':(10, 18),
+        'wall-11':(16, 26)
     }
 }
 
@@ -2312,7 +2325,11 @@ doobig = {
             "Obstacle-3",
             "Obstacle-4",
             "Obstacle-7"],
-    'FRRE':[]
+    'FRRE':[],
+    'FOCI':[
+            'wall-2',
+            'wall-6'
+            ]
 }
 
 def map_point(p):
@@ -2439,6 +2456,13 @@ static_objs = {
         'aoi'    :((21, 13), (30, 21), (18, 28), (36, 10),
                    (41, 21), (31, 28), (30, 35), (39, 28),
                    (43, 35), (50, 29), (50, 21))
+    },
+    "FOCI":{
+        'hill'   :((30, 15), (29, 16), (28, 15)),
+        'barrels':[(41, 15), (20, 17)],
+        'brls_mp':((0, 0, 0, 0), (1, 0, 1, 0)),
+        'aoi'    :((16, 19), (22, 17), (23, 25), (41, 26), 
+                   (39, 18), (48, 15), (32, 10), (23, 11))
     }
 }
 
@@ -2537,6 +2561,40 @@ map_points = {
         (50, 32),
         (50, 26),
         (50, 19) 
+    ),
+    "FOCI":(
+        ( 4, 14),
+        ( 4, 21),
+        ( 7, 23),
+        (10, 23),
+        (10, 28),
+        (13, 31),
+        (14, 20),
+        (17, 14),
+        (23,  8),
+        (23, 13),
+        (20, 17),
+        (24, 18),
+        (21, 23),
+        (24, 26),
+        (21, 31),
+        (30, 26),
+        (32, 15),
+        (32,  8),
+        (35,  3),
+        (38, 10),
+        (39, 15),
+        (40, 20),
+        (40, 24),
+        (38, 26),
+        (43, 27),
+        (43, 17),
+        (47, 10),
+        (47, 15),
+        (50, 18),
+        (53, 18),
+        (53, 25),
+        (51, 27)
     )
 }
 
@@ -2608,11 +2666,11 @@ def mpd_direction(msp, mep):
     #pthim[mep[1], mep[0]] = 125
     #cv.imshow("Test", cv.resize(pthim, (1066, 600)))
     #cv.waitKey(1)
-    #drwmap = map_img.copy()
-    #drwmap[msp[1], msp[0]] = 125 
-    #drwmap[mnp[1], mnp[0]] = 125 
-    #cv.imshow("map", cv.resize(drwmap, (1066, 600)))
-    #cv.waitKey(1)
+    drwmap = map_img.copy()
+    drwmap[msp[1], msp[0]] = 125 
+    drwmap[mnp[1], mnp[0]] = 125 
+    cv.imshow("map", cv.resize(drwmap, (1066, 600)))
+    cv.waitKey(1)
     return dr
 
 CHK_CLCT_IM = read_img('src/modes/chk_clctd.png')
