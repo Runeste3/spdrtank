@@ -1594,13 +1594,18 @@ def detect_mode_map(img):
     logger.info("Map Mode OCR parsing: {}".format(result))
 
     if " ON " in result:
-        mds, mps = result.split(" ON ")
+        result = result.split(" ON ")
     elif " OM " in result:
-        mds, mps = result.split(" OM ")
+        result = result.split(" OM ")
     elif " O " in result:
-        mds, mps = result.split(" O ")
+        result = result.split(" O ")
     elif " ON" in result:
-        mds, mps = result.split(" ON")
+        result = result.split(" ON")
+    else:
+        result = []
+        
+    if len(result) == 2:
+        mds, mps = result
     else:
         mds, mps = "", ""
     
