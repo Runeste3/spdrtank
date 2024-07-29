@@ -25,8 +25,9 @@ chk_model = None
 map_model = None
 map_img   = None
 game_mode = None
-supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", "FOCI")
-static_maps    = ("JUTE", "DECA", "FRRE", "FOCI")
+supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", 
+                  "FOCI", "STST")
+static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -838,7 +839,7 @@ def __record(reg):
 
     while True:
         img = get_region(reg)
-        save_img(img, "__test/_pathing/forsaken/{}.png".format(i))
+        save_img(img, "__test/_pathing/base/{}.png".format(i))
         print(i)
         i += 1
         sleep(0.1)
@@ -1748,6 +1749,9 @@ def load_map_model(pm):
     elif pm == "FOCI":
         map_model = Model("src/models/forsaken.pt")
         map_img   = cv.imread("src/maps/forsaken.png", 0)
+    elif pm == "STST":
+        map_model = Model("src/models/stronghold.pt")
+        map_img   = cv.imread("src/maps/stronghold.png", 0)
 
 def map_objs(img):
     """
@@ -2235,6 +2239,33 @@ objects_mps = {
         'wall-9' :(14, 10),
         'wall-10':(10, 18),
         'wall-11':(16, 26)
+    },
+    "STST":{
+        'wall-1' :(25,  5),
+        'wall-2' :(18,  8),
+        'wall-3' :(32,  8),
+        'wall-12':(30, 13),
+        'wall-11':(25, 16),
+        'wall-9' :(25, 21),
+        'wall-8' :(25, 25),
+        'wall-7' :(22, 27),
+        'wall-5' :(19, 32),
+        'wall-6' :(31, 32),
+        'wall-4' :(25, 35),
+        'wall-13':( 3, 20),
+        'wall-10':(47, 20)
+
+        #'wall-1' :(20,  5),
+        #'wall-2' :(13,  8),
+        #'wall-3' :(27,  8),
+        #'wall-12':(25, 13),
+        #'wall-11':(20, 16),
+        #'wall-9' :(20, 21),
+        #'wall-8' :(20, 25),
+        #'wall-7' :(17, 27),
+        #'wall-5' :(14, 32),
+        #'wall-6' :(26, 32),
+        #'wall-4' :(20, 35),
     }
 }
 
@@ -2334,7 +2365,13 @@ doobig = {
     'FOCI':[
             'wall-2',
             'wall-6'
-            ]
+            ],
+    'STST':[
+        'pit-1',
+        'pit-2',
+        'pit-3',
+        'pit-4',
+    ]
 }
 
 def map_point(p):
@@ -2468,6 +2505,13 @@ static_objs = {
         'brls_mp':((0, 0, 0, 0), (1, 0, 1, 0)),
         'aoi'    :((16, 19), (22, 17), (23, 25), (41, 26), 
                    (39, 18), (48, 15), (32, 10), (23, 11))
+    },
+    "STST":{
+        'hill'   :((8, 19), (9, 19), (10, 19)),
+        'barrels':[(47, 14), (3, 25)],
+        'brls_mp':[(0, 0, 0, 0), (0, 0, 0, 0)],
+        'aoi'    :((9, 19), (25, 19), (41, 19), (25, 8),
+                   (25, 32))
     }
 }
 
@@ -2600,6 +2644,43 @@ map_points = {
         (53, 18),
         (53, 25),
         (51, 27)
+    ),
+    "STST":(
+        (10,  4),
+        ( 6,  8),
+        ( 6, 16),
+        ( 7, 24),
+        ( 8, 31),
+        (13, 34),
+        (12, 19),
+        (20,  4),
+        (19, 14),
+        (17, 19),
+        (17, 25),
+        (18, 28),
+        (20, 36),
+        (25, 31),
+        (26, 28),
+        (20, 23),
+        (21, 18),
+        (26, 14),
+        (27, 11),
+        (25,  9),
+        (30,  4),
+        (33, 11),
+        (33, 14),
+        (30, 14),
+        (30, 18),
+        (29, 23),
+        (31, 26),
+        (30, 36),
+        (37, 34),
+        (44, 32),
+        (45, 26),
+        (40, 20),
+        (42,  8),
+        (36,  4),
+        (35, 19)
     )
 }
 
@@ -3062,7 +3143,7 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    pm = "FOCI"
+    pm = "STST"
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -3104,7 +3185,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/forsaken.png", 0)
+        tmim = cv.imread("src/maps/stronghold.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
