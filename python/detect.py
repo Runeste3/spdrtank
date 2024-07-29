@@ -26,7 +26,7 @@ map_model = None
 map_img   = None
 game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", 
-                  "FOCI", "STST")
+                  "FOCI", "STST", "ARBA")
 static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST")
 # ---------------- Classes ------------------
 class Weapon:
@@ -1752,6 +1752,8 @@ def load_map_model(pm):
     elif pm == "STST":
         map_model = Model("src/models/stronghold.pt")
         map_img   = cv.imread("src/maps/stronghold.png", 0)
+    elif pm == "ARBA":
+        map_model = Model("src/models/base.pt")
 
 def map_objs(img):
     """
