@@ -27,7 +27,7 @@ map_img   = None
 game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", 
                   "FOCI", "STST", "ARBA")
-static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST")
+static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST", "ARBA")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1754,6 +1754,7 @@ def load_map_model(pm):
         map_img   = cv.imread("src/maps/stronghold.png", 0)
     elif pm == "ARBA":
         map_model = Model("src/models/base.pt")
+        map_img   = cv.imread("src/maps/base.png", 0)
 
 def map_objs(img):
     """
@@ -2256,19 +2257,15 @@ objects_mps = {
         'wall-4' :(25, 35),
         'wall-13':( 3, 20),
         'wall-10':(47, 20)
-
-        #'wall-1' :(20,  5),
-        #'wall-2' :(13,  8),
-        #'wall-3' :(27,  8),
-        #'wall-12':(25, 13),
-        #'wall-11':(20, 16),
-        #'wall-9' :(20, 21),
-        #'wall-8' :(20, 25),
-        #'wall-7' :(17, 27),
-        #'wall-5' :(14, 32),
-        #'wall-6' :(26, 32),
-        #'wall-4' :(20, 35),
+    },
+    "ARBA":{
+        'wall-1':(20, 15),
+        'wall-2':(23, 21),
+        'wall-3':(28, 17),
+        'wall-4':(43, 13),
+        'wall-5':(49, 17)
     }
+
 }
 
 def pred_pos(osp, name, psp):
@@ -2373,6 +2370,9 @@ doobig = {
         'pit-2',
         'pit-3',
         'pit-4',
+    ],
+    'ARBA':[
+        'pit-1',
     ]
 }
 
@@ -2514,6 +2514,12 @@ static_objs = {
         'brls_mp':[(0, 0, 0, 0), (0, 0, 0, 0)],
         'aoi'    :((9, 19), (25, 19), (41, 19), (25, 8),
                    (25, 32))
+    },
+    "ARBA":{
+        'hill'   :((32, 21), (33, 21), (34, 21)),
+        'barrels':[(23, 15), (45, 17)],
+        'brls_mp':[(0, 1, 0, 0), (0, 0, 0, 0)],
+        'aoi'    :((20, 18), (26, 11), (42, 20), (43, 10))
     }
 }
 
@@ -2683,6 +2689,26 @@ map_points = {
         (42,  8),
         (36,  4),
         (35, 19)
+    ),
+    "ARBA":(
+        (15, 10),
+        (15, 17),
+        (18, 24),
+        (25, 24),
+        (26, 20),
+        (26, 17),
+        (26, 10),
+        (30, 21),
+        (39, 10),
+        (39, 16),
+        (39, 21),
+        (44, 17),
+        (46, 21),
+        (47, 14),
+        (50, 10),
+        (54, 14),
+        (54, 21),
+        (23, 11)
     )
 }
 
@@ -2747,13 +2773,6 @@ def mpd_direction(msp, mep):
     #path     = untangle(  path, map_img)
     #dr, _    = path_to_dr(path, max_d=2, custom_steps=range(1, 11))
     dr, _     = path_to_dr([msp, mnp])
-
-    #pthim    = map_img.copy()
-    #pthim    = draw_path(path, pthim)
-    #pthim[msp[1], msp[0]] = 125
-    #pthim[mep[1], mep[0]] = 125
-    #cv.imshow("Test", cv.resize(pthim, (1066, 600)))
-    #cv.waitKey(1)
     #drwmap = map_img.copy()
     #drwmap[msp[1], msp[0]] = 125 
     #drwmap[mnp[1], mnp[0]] = 125 
@@ -3145,7 +3164,7 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    pm = "STST"
+    pm = "ARBA"
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -3187,7 +3206,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/stronghold.png", 0)
+        tmim = cv.imread("src/maps/base.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
