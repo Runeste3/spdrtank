@@ -27,7 +27,8 @@ map_img   = None
 game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", 
                   "FOCI", "STST", "ARBA")
-static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST", "ARBA")
+static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST", 
+                  "ARBA", "SAHA")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1736,6 +1737,7 @@ def load_map_model(pm):
                                                 #            'w3', 'w4', 'w5',
                                                 #            'w6', 'w7', 'w8',
                                                 #            'w9'])
+        map_img = cv.imread("src/maps/haven.png", 0)
     elif pm == "SHSH":
         map_model = Model("src/models/shrine.pt")
     elif pm == "DRCA":
@@ -2264,6 +2266,17 @@ objects_mps = {
         'wall-3':(28, 17),
         'wall-4':(43, 13),
         'wall-5':(49, 17)
+    },
+    "SAHA":{
+        'w1':(26, 35),
+        'w2':(35, 33),
+        'w3':(41, 36),
+        'w4':(41, 29),
+        'w5':(17, 33),
+        'w6':(37, 16),
+        'w7':(31, 23),
+        'w8':(21, 27),
+        'w9':(11, 15)
     }
 
 }
@@ -2373,6 +2386,12 @@ doobig = {
     ],
     'ARBA':[
         'pit-1',
+    ],
+    'SAHA':[
+        'p1',
+        'p2',
+        'p3',
+        'p4',
     ]
 }
 
@@ -2520,6 +2539,13 @@ static_objs = {
         'barrels':[(23, 15), (45, 17)],
         'brls_mp':[(0, 1, 0, 0), (0, 0, 0, 0)],
         'aoi'    :((20, 18), (26, 11), (42, 20), (43, 10))
+    },
+    "SAHA":{
+        'hill'   :((25, 24), (26, 24), (27, 24)),
+        'barrels':[(22, 22), (37, 33)],
+        'brls_mp':[(0, 0, 1, 0), (0, 1, 0, 0)],
+        'aoi'    :((8, 20), (24, 24), (20, 35), (38, 35),
+                   (40, 24), (31, 13))
     }
 }
 
@@ -2709,6 +2735,33 @@ map_points = {
         (54, 14),
         (54, 21),
         (23, 11)
+    ),
+    "SAHA":(
+        ( 6, 12),
+        ( 6, 18),
+        (11, 23),
+        (12, 29),
+        (14, 35),
+        (14,  9),
+        (17, 24),
+        (18, 29),
+        (21, 32),
+        (20, 36),
+        (23, 37),
+        (27, 26),
+        (24, 24),
+        (23,  9),
+        (27, 11),
+        (32, 14),
+        (32, 19),
+        (31, 24),
+        (36, 37),
+        (42, 31),
+        (42, 24),
+        (42, 19),
+        (41, 16),
+        (41, 12),
+        (25, 19)
     )
 }
 
@@ -3164,7 +3217,7 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    pm = "ARBA"
+    pm = "SAHA"
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -3206,7 +3259,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/base.png", 0)
+        tmim = cv.imread("src/maps/haven.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
