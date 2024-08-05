@@ -408,40 +408,40 @@ def tdm_move():
     #    vec_to_move(vect)
     #    sleep(2)
     if atkmode == 1:
-        if len(loals) > 0:
-            if mv_far:
-                mvto_frst("ally")
-            else:
-                mvto_nrst("ally")
+        #if len(loals) > 0:
+        #    if mv_far:
+        #        mvto_frst("ally")
+        #    else:
+        #        mvto_nrst("ally")
+        #else:
+        #    loai = detect.aly_inds(img)
+        #    if loai:
+        #        naly = loai[0]
+        #        log("Moving to arrows {} {}".format(len(loai), naly))
+        #        move_toward(naly)
+        #    elif loenm:
+        if st_mp():
+            roam()
         else:
-            loai = detect.aly_inds(img)
-            if loai:
-                naly = loai[0]
-                log("Moving to arrows {} {}".format(len(loai), naly))
-                move_toward(naly)
-            elif loenm:
-                if st_mp():
-                    roam()
-                else:
-                    random_move()
+            random_move()
     else:
         if loenm:
             mvto_nrst("enemy")
-        elif loals:
-            if mv_far:
-                mvto_frst("ally")
-            else:
-                mvto_nrst("ally")
+        #elif loals:
+        #    if mv_far:
+        #        mvto_frst("ally")
+        #    else:
+        #        mvto_nrst("ally")
+        #else:
+        #    loai = detect.aly_inds(img)
+        #    if loai:
+        #        naly = loai[0]
+        #        log("Moving to arrows {} {}".format(len(loai), naly))
+        #        move_toward(naly)
+        elif st_mp():
+            roam()
         else:
-            loai = detect.aly_inds(img)
-            if loai:
-                naly = loai[0]
-                log("Moving to arrows {} {}".format(len(loai), naly))
-                move_toward(naly)
-            elif st_mp():
-                roam()
-            else:
-                random_move()
+            random_move()
 
 def basic_move():
     """
@@ -565,7 +565,10 @@ def flag_move():
             else:
                 random_move()
         elif ftp == "self":
-            basic_move()
+            if st_mp():
+                roam()
+            else:
+                basic_move()
         elif ftp == "ally":
             sfd = dist(slfloc, floc)
             if sfd < 800:
