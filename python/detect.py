@@ -28,7 +28,7 @@ game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", 
                   "FOCI", "STST", "ARBA")
 static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST", 
-                  "ARBA", "SAHA")
+                  "ARBA", "SAHA", "SHSH", "VAVA")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1731,6 +1731,7 @@ def load_map_model(pm):
                                                     "Pit-8",
                                                     "Wall-19",
                                                     ])
+        map_img = cv.imread("src/maps/vault.png", 0)
     elif pm == "SAHA":
         map_model = Model("src/models/haven.pt")#, "mask", ['p1', 'p2', 'p3',
                                                 #            'p4', 'w1', 'w2',
@@ -1740,6 +1741,7 @@ def load_map_model(pm):
         map_img = cv.imread("src/maps/haven.png", 0)
     elif pm == "SHSH":
         map_model = Model("src/models/shrine.pt")
+        map_img   = cv.imread("src/maps/shrine.png", 0)
     elif pm == "DRCA":
         map_model = Model("src/models/dragon.pt", ['p2', 'w1', 'w2', 'p1'])
     elif pm == "JUTE":
@@ -2277,8 +2279,27 @@ objects_mps = {
         'w7':(31, 23),
         'w8':(21, 27),
         'w9':(11, 15)
+    },
+    "SHSH":{
+        'w1':(27, 26),
+        'w2':(16, 25),
+        'w3':(36, 23),
+        'p2':(15, 15),
+        'p3':(34, 15)
+    },
+    "VAVA":{
+        'Wall-2' :(25, 10),
+        'Wall-3' :(31,  8),
+        #'Wall-5' :(32, 13),
+        'Wall-8' :(40, 21),
+        'Wall-10':(42, 26),
+        'Wall-11':(36, 27),
+        'Wall-13':(10, 18),
+        #'Wall-14':(16, 17),
+        'Wall-16':(13, 22),
+        'Wall-18':(20, 30),
+        'Wall-19':(22, 35),
     }
-
 }
 
 def pred_pos(osp, name, psp):
@@ -2392,6 +2413,29 @@ doobig = {
         'p2',
         'p3',
         'p4',
+    ],
+    'SHSH':[
+        'p1',
+    ],
+    'VAVA':[
+            'Wall-5',
+            'Wall-14',
+            'Wall-12',
+            'Wall-17',
+            "Wall-1",
+            "Wall-4",
+            "Pit-1",
+            "Pit-2",
+            "Pit-3",
+            "Wall-6",
+            "Wall-7",
+            "Pit-4",
+            "Wall-9",
+            "Pit-5",
+            "Pit-6",
+            "Pit-7",
+            "Wall-15",
+            "Pit-8",
     ]
 }
 
@@ -2546,7 +2590,19 @@ static_objs = {
         'brls_mp':[(0, 0, 1, 0), (0, 1, 0, 0)],
         'aoi'    :((8, 20), (24, 24), (20, 35), (38, 35),
                    (40, 24), (31, 13))
-    }
+    },
+    "SHSH":{
+        'hill'   :((25, 18), (26, 18), (27, 18)),
+        'barrels':[(26, 20), (27, 30)],
+        'brls_mp':[(0, 0, 0, 0), (0, 0, 0, 0)],
+        'aoi'    :((9, 24), (25, 18), (27, 31), (43, 23))
+    },
+    "VAVA":{
+        'hill'   :((25, 21), (26, 21), (27, 21)),
+        'barrels':[(19, 16), (34, 26)],
+        'brls_mp':[(0, 0, 0, 0), (0, 0, 0, 0)],
+        'aoi'    :((18, 20), (26,  8), (34, 22), (27, 34)) 
+    },
 }
 
 map_points = {
@@ -2762,6 +2818,72 @@ map_points = {
         (41, 16),
         (41, 12),
         (25, 19)
+    ),
+    "SHSH":(
+        ( 7, 10),
+        ( 7, 20),
+        (10, 29),
+        (18, 29),
+        (21, 29),
+        (21, 20),
+        (25, 15),
+        (25, 10),
+        (32, 19),
+        (32, 28),
+        (29, 32),
+        (41, 10),
+        (41, 19),
+        (41, 28)
+    ),
+    "VAVA":(
+        (16,  7),
+        ( 8, 13),
+        (16, 13),
+        (12, 16),
+        ( 8, 20),
+        (12, 20),
+        (11, 23),
+        ( 9, 27),
+        (14, 26),
+        (10, 30),
+        (16, 30),
+        (19, 33),
+        (19, 37),
+        (18, 26),
+        (18, 21),
+        (20, 14),
+        (21, 22),
+        (21, 18),
+        (20, 11),
+        (24,  8),
+        (28,  6),
+        (29,  9),
+        (29, 14),
+        (26, 17),
+        (26, 21),
+        (27, 24),
+        (25, 26),
+        (25, 28),
+        (28, 37),
+        (32, 33),
+        (33, 28),
+        (31, 24),
+        (31, 21),
+        (33, 16),
+        (35, 14),
+        (35,  9),
+        (35,  6),
+        (38, 13),
+        (45, 13),
+        (38, 16),
+        (41, 19),
+        (41, 22),
+        (45, 22),
+        (39, 24),
+        (45, 28),
+        (39, 30),
+        (36, 30),
+        (36, 37)
     )
 }
 
@@ -2795,24 +2917,64 @@ def get_obj_loc(name, msp, cm):
     elif name == "barrels":
         return closest_to(msp, static_objs[cm][name])
 
+def reachable(pa, pb):
+    """
+    Map Point, Map Point -> bool
+    Return True if a it's possible to go from
+    point 'pa' to 'pb' in the current map
+    """
+    global map_img
+    elm = cv.line(np.zeros_like(map_img), pa, pb, 1)
+    return not (255 in map_img[elm==1])
+
+def last_reachable(mp, lomp):
+    """
+    Map Point, List(Map Point) -> Map Point
+    Given a source map point return the farthest
+    reachable map point given a sorted list of map point
+    based on distance
+    """
+    for imp in lomp[::-1]:
+        if reachable(mp, imp):
+            return imp
+
 def next_point(msp, mep):
     """
-    Map Point, Map Point -> Map Point
+    Map Point, Map Point -> Map Point | None
     Return a point reachable from 'msp'
     that gets player closer  to   'mep'
     """
     global map_img, cur_map
 
-    lomp  = map_points[cur_map]
-    slomp = list(sorted(lomp, key=lambda p: dist(p, mep)))
-    slomp.insert(0, mep)
+    lomp  = map_points[cur_map] + (mep,)
 
-    for ep in slomp:
-        elm = cv.line(np.zeros_like(map_img), msp, ep, 1)
-        if not (255 in map_img[elm==1]):
-            return ep
+    if reachable(msp, mep):
+        return (mep,)
     else:
-        return mep
+        cp   = msp
+        lovp = {
+            cp:((), 0),
+            } 
+        lorp = []
+        heapq.heapify(lorp)
+
+        while cp != mep:
+            # Add all reachable points
+            for mp in filter(lambda mp: reachable(cp, mp), lomp):
+                heapq.heappush(lorp, (lovp[cp][1] + dist(mp, cp), mp, cp))
+
+            # Select and visit next closest point
+            for _ in range(len(lorp)):
+                spd, sp, lp = heapq.heappop(lorp)
+                if (not (sp in lovp) or
+                    lovp[sp][1] > spd):
+                    lovp[sp] = (lovp[lp][0] + (sp,), spd)
+                    cp = sp
+                    break
+            else:
+                return (mep,)
+
+        return lovp[mep][0]
 
 # Direction based on a pre-built map
 def mpd_direction(msp, mep):
@@ -2821,7 +2983,7 @@ def mpd_direction(msp, mep):
     Return the direction to follow to get
     to point 'mep'
     """
-    mnp       = next_point(msp,  mep)
+    mnp = next_point(msp,  mep)[0]
     #path     = heap_best_path(map_img, msp, mep, gap=1)
     #path     = untangle(  path, map_img)
     #dr, _    = path_to_dr(path, max_d=2, custom_steps=range(1, 11))
@@ -3217,7 +3379,12 @@ if __name__ == "__main__":
     #__record(reg)
     #quit()
 
-    pm = "SAHA"
+    #wnsz = 1616, 939
+    #new_win(wnsz)
+    #reg = 0, 0, wnsz[0], wnsz[1]
+    #get_region = lambda reg: read_img("D:/dev/spdrtank/__test/_cc/7878.png")
+
+    pm = "VAVA"
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -3245,10 +3412,6 @@ if __name__ == "__main__":
 
         loob = map_objs(img)
         mp   = map_point(ppos)
-        if mp is None:
-            print("Map point is none for ppos: " + str(ppos))
-            sleep(1)
-            continue
 
         for (_, box), _, name in loob:
             ow, oh = box[2] - box[0], box[3] - box[1]
@@ -3259,12 +3422,23 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/haven.png", 0)
+        tmim = cv.imread("src/maps/vault.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
 
-        tmim[mp[1], mp[0]] = 125
+        if mp is None:
+            print("Map point is none for ppos: " + str(ppos))
+        else:
+            print("In next point")
+            mp = nearest_b(mp, tmim)
+            path = next_point(mp, choice(((25, 21), (26, 21), (27, 21))))
+            print(path)
+            print("Out next point")
+            mnp = path[0]
+            tmim[mnp[1], mnp[0]] = 125
+            tmim[mp[1], mp[0]] = 125
+            print("Map loc:" + str(mp))
         #objs.append((ppos, "player"))
         #result = ""
         #for c, n in objs:
@@ -3272,7 +3446,6 @@ if __name__ == "__main__":
         #print("")
         #print(result)
         #print("")
-        print("Map loc:" + str(mp))
         cv.imshow("test", cv.resize(img.img, (1066, 600)))
         cv.imshow("map",  cv.resize(tmim,    (1066, 600)))
         cv.waitKey(1)
