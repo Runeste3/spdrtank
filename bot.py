@@ -842,7 +842,7 @@ def button_handler():
         lvfnd = not (pos is None)
         if lvfnd:
             logger.info("Leave button detected: {}".format(pos))
-            click((pos[0] + 80, pos[1] + 25), hover=0.3)
+            click(pos, hover=0.3)
         return lvfnd
 
     def recon_dial():

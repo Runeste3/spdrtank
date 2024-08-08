@@ -452,20 +452,19 @@ def find_n_compare(ima, imb, sft_qual=30, mdf=1000):
         except Exception as e:
             pass
 
-LVIM = read_img("src/leave/btn.png", "grey")
-LVIM_GR = read_img("src/leave/btngr.png", "grey")
+#LVIM = read_img("src/leave/btn.png", "grey")
+#LVIM_GR = read_img("src/leave/btngr.png", "grey")
+LVIM = read_img("src/leave/lvbtn.png", "grey")
 
 def end_game(img):
     """
-    Image -> rect | None
+    Image -> Point | None
     Return a point of the leave button if found
     else return None
     """
-    rect = find_n_compare(LVIM, img)
-    if rect is None:
-        return find_n_compare(LVIM_GR, img)
-    else:
-        return rect 
+    res = recal(LVIM, ogsz=1920, wonly=True)
+    return look_for(res, img, 0.9)
+
 
 PLYIM = read_img("src/queue/plybtn.png",   "grey")
 CMPIM = read_img("src/queue/cmptvbtn.png", "grey")
@@ -1574,14 +1573,18 @@ def mn_to_mp(gmn):
     Return the map phrase if the
     given string is a map name
     """
+    br = 0
+    bm = cur_map
     for mn in LOMN:
         smr = fuzz.ratio(mn, gmn)
-        if smr > 80:
+        if smr > 70:
             mnp = mn.split(" ")
             if len(mnp) >= 2 and (len(mnp[0]) > 2 and len(mnp[1])):
-                return "{}{}".format(mnp[0][:2], mnp[-1][:2])
+                if smr > br:
+                    bm = "{}{}".format(mnp[0][:2], mnp[-1][:2])
+                    br = smr
 
-    return cur_map 
+    return bm 
 
 def detect_mode_map(img):
     """
@@ -2144,6 +2147,25 @@ def shrink_vmap(vmap, sp, ep):
     
     return vmap, nsp, nep
 
+DIRECTS = (
+    ( 0,  0),
+    ( 1,  0),
+    ( 1,  1),
+    ( 0,  1),
+    (-1,  0),
+    (-1, -1),
+    ( 0, -1),
+    ( 1, -1),
+    (-1,  1)
+)
+
+def random_dr():
+    """
+    None -> Direction
+    Return a random direction vector
+    """
+    return choice(DIRECTS)
+
 lpmp = 20, 10 
 
 def direction(img, sp, ep, mp):
@@ -2167,7 +2189,7 @@ def direction(img, sp, ep, mp):
             if not mp:
                 return rt_direction(img, sp, ep)
             else:
-                return 0, 0
+                return random_dr()
         msp = nearest_b(msp, map_img)
         lpmp = msp
         if type(ep) is str:
@@ -2181,10 +2203,10 @@ def direction(img, sp, ep, mp):
                 if not mp:
                     return rt_direction(img, sp, ep)
                 else:
-                    return 0, 0
+                    return random_dr()
             mep = nearest_b(mep, map_img)
         if msp == mep:
-            return 0, 0
+            return random_dr()
         return mpd_direction(msp, mep)
     else:
         return rt_direction(img, sp, ep)
