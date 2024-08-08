@@ -545,7 +545,7 @@ def retry_button(img):
     if not found return None
     """
     res = recal(RTRIM, ogsz=1920, wonly=True)
-    return look_for(res, img, 0.9)
+    return look_for(res, img, 0.95)
 
 def victory_defeat(img):
     """
