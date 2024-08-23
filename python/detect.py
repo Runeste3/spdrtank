@@ -28,7 +28,7 @@ game_mode = None
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", 
                   "FOCI", "STST", "ARBA")
 static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST", 
-                  "ARBA", "SAHA", "SHSH", "VAVA")
+                  "ARBA", "SAHA", "SHSH", "VAVA", "DRCA")
 # ---------------- Classes ------------------
 class Weapon:
     NORMAL   = 0
@@ -1746,7 +1746,8 @@ def load_map_model(pm):
         map_model = Model("src/models/shrine.pt")
         map_img   = cv.imread("src/maps/shrine.png", 0)
     elif pm == "DRCA":
-        map_model = Model("src/models/dragon.pt", ['p2', 'w1', 'w2', 'p1'])
+        map_model = Model("src/models/dragon.pt")
+        map_img   = cv.imread("src/maps/dragon.png", 0)
     elif pm == "JUTE":
         map_model = Model("src/models/temple.pt")
         map_img   = cv.imread("src/maps/temple.png", 0)
@@ -2321,6 +2322,20 @@ objects_mps = {
         'Wall-16':(13, 22),
         'Wall-18':(20, 30),
         'Wall-19':(22, 35),
+    },
+    "DRCA":{
+        'w2':(26, 20),
+        'w3':(33, 20),
+        'p3':(38, 22),
+        'w4':(40, 25),
+        'w5':(41, 30),
+        'p4':(37, 34),
+        'w6':(33, 36),
+        'w7':(26, 36),
+        'p5':(22, 34),
+        'w8':(19, 30),
+        'w9':(19, 25),
+        'p2':(22, 22)
     }
 }
 
@@ -2458,6 +2473,10 @@ doobig = {
             "Pit-7",
             "Wall-15",
             "Pit-8",
+    ],
+    'DRCA':[
+        'w1',
+        'p1'
     ]
 }
 
@@ -2625,6 +2644,13 @@ static_objs = {
         'brls_mp':[(0, 0, 0, 0), (0, 0, 0, 0)],
         'aoi'    :((18, 20), (26,  8), (34, 22), (27, 34)) 
     },
+    "DRCA":{
+        'hill'   :((29, 19), (30, 19), (31, 19)),
+        'barrels':[(40, 27), (20, 27)],
+        'brls_mp':[(0, 0, 0, 0), (0, 0, 0, 0)],
+        'aoi'    :[(16, 18), (20, 28), (17, 37), (30, 35),
+                   (43, 37), (40, 27), (44, 17), (30, 18)]
+    }
 }
 
 map_points = {
@@ -2906,6 +2932,22 @@ map_points = {
         (39, 30),
         (36, 30),
         (36, 37)
+    ),
+    "DRCA":(
+        ( 9, 14),
+        (15, 16),
+        (15, 28),
+        (16, 38), 
+        (30, 38),
+        (30, 34),
+        (23, 28),
+        (29, 21),
+        (30, 16),
+        (44, 16),
+        (48, 16),
+        (37, 27),
+        (44, 27),
+        (44, 38)
     )
 }
 
@@ -3398,6 +3440,13 @@ if __name__ == "__main__":
     win.repos(0, 0)
     new_win(win.size)
     reg = 0, 0, win.size[0], win.size[1]
+
+    img = get_region(reg)
+    #p = retry_button(img)
+    #print(p)
+    #if not (p is None):
+    #    mouse.click(p)
+    #quit()
     #__record(reg)
     #quit()
 
@@ -3406,7 +3455,7 @@ if __name__ == "__main__":
     #reg = 0, 0, wnsz[0], wnsz[1]
     #get_region = lambda reg: read_img("D:/dev/spdrtank/__test/_cc/7878.png")
 
-    pm = "VAVA"
+    pm = "DRCA"
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -3444,7 +3493,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/vault.png", 0)
+        tmim = cv.imread("src/maps/dragon.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
@@ -3452,13 +3501,13 @@ if __name__ == "__main__":
         if mp is None:
             print("Map point is none for ppos: " + str(ppos))
         else:
-            print("In next point")
-            mp = nearest_b(mp, tmim)
-            path = next_point(mp, choice(((25, 21), (26, 21), (27, 21))))
-            print(path)
-            print("Out next point")
-            mnp = path[0]
-            tmim[mnp[1], mnp[0]] = 125
+            #print("In next point")
+            #mp = nearest_b(mp, tmim)
+            #path = next_point(mp, choice(((25, 21), (26, 21), (27, 21))))
+            #print(path)
+            #print("Out next point")
+            #mnp = path[0]
+            #tmim[mnp[1], mnp[0]] = 125
             tmim[mp[1], mp[0]] = 125
             print("Map loc:" + str(mp))
         #objs.append((ppos, "player"))
