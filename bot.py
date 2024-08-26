@@ -802,21 +802,22 @@ def queuer():
                             sleep(5)
                             switch_contract()
                         if cmptv and in_game:
-                            running = False
-                            for _ in range(5):
-                                if boton:
-                                    sleep(1)
-                            print("\n")
-                            for i in range(30):
-                                print("Resetting after {} seconds...".format(50 - i), end="\r")
-                                if boton:
-                                    sleep(1)
-                                else:
-                                    return
-                            print("\nRESETTING\n")
-                            reset()
-                            logger.info("Resetting")
-                            return
+                            in_game = False
+                            #running = False
+                            #for _ in range(5):
+                            #    if boton:
+                            #        sleep(1)
+                            #print("\n")
+                            #for i in range(30):
+                            #    print("Resetting after {} seconds...".format(50 - i), end="\r")
+                            #    if boton:
+                            #        sleep(1)
+                            #    else:
+                            #        return
+                            #print("\nRESETTING\n")
+                            #reset()
+                            #logger.info("Resetting")
+                            #return
 
 
                         if cmptv:
