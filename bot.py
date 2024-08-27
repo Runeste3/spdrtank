@@ -10,9 +10,10 @@ from datetime import datetime
 from cvbot.windows import find_window, Window
 from os import get_terminal_size as gts
 from os import listdir
+from os import system
 import detect
 import json
-import subprocess
+#import subprocess
 import logging
 # Testing
 import traceback
@@ -115,7 +116,8 @@ def reset():
     botoff()
     save_conf(no_prompt=True, save_rt=True)
     sleep(5)
-    subprocess.call(['python\python', 'bot.py'], shell=True)
+    #subprocess.call(['python\python', 'bot.py'], shell=True)
+    system("python\python bot.py")
 
 def win_trade():
     global bad_play
@@ -802,22 +804,21 @@ def queuer():
                             sleep(5)
                             switch_contract()
                         if cmptv and in_game:
-                            in_game = False
-                            #running = False
-                            #for _ in range(5):
-                            #    if boton:
-                            #        sleep(1)
-                            #print("\n")
-                            #for i in range(30):
-                            #    print("Resetting after {} seconds...".format(50 - i), end="\r")
-                            #    if boton:
-                            #        sleep(1)
-                            #    else:
-                            #        return
-                            #print("\nRESETTING\n")
-                            #reset()
-                            #logger.info("Resetting")
-                            #return
+                            running = False
+                            for _ in range(5):
+                                if boton:
+                                    sleep(1)
+                            print("\n")
+                            for i in range(30):
+                                print("Resetting after {} seconds...".format(50 - i), end="\r")
+                                if boton:
+                                    sleep(1)
+                                else:
+                                    return
+                            print("\nRESETTING\n")
+                            reset()
+                            logger.info("Resetting")
+                            return
 
 
                         if cmptv:
