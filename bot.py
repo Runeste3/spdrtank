@@ -10,10 +10,11 @@ from datetime import datetime
 from cvbot.windows import find_window, Window
 from os import get_terminal_size as gts
 from os import listdir
-from os import system
 import detect
 import json
 #import subprocess
+#from subprocess import Popen
+from os import system
 import logging
 # Testing
 import traceback
@@ -117,7 +118,9 @@ def reset():
     save_conf(no_prompt=True, save_rt=True)
     sleep(5)
     #subprocess.call(['python\python', 'bot.py'], shell=True)
-    system("python\python bot.py")
+    system("run.bat")
+    #p = Popen("batch.bat", cwd=r"/run.bat")
+    #p.communicate()
 
 def win_trade():
     global bad_play
@@ -1328,6 +1331,7 @@ def init():
         print("")
 
         run()
+        #reset()
 
 if __name__ == "__main__":
     # Testing
