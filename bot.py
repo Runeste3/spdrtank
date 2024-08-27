@@ -12,9 +12,9 @@ from os import get_terminal_size as gts
 from os import listdir
 import detect
 import json
-#import subprocess
+import subprocess
 #from subprocess import Popen
-from os import system
+#from os import system
 import logging
 # Testing
 import traceback
@@ -118,9 +118,10 @@ def reset():
     save_conf(no_prompt=True, save_rt=True)
     sleep(5)
     #subprocess.call(['python\python', 'bot.py'], shell=True)
-    system("run.bat")
+    #system("run.bat")
     #p = Popen("batch.bat", cwd=r"/run.bat")
     #p.communicate()
+    subprocess.Popen(["run.bat"])
 
 def win_trade():
     global bad_play
