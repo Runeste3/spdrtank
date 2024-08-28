@@ -13,8 +13,6 @@ from os import listdir
 import detect
 import json
 import subprocess
-#from subprocess import Popen
-#from os import system
 import logging
 # Testing
 import traceback
@@ -29,6 +27,7 @@ rntm   = 0
 tmtoran = 3600 * 8 # 8 Hours
 bad_play = False
 mv_far = False
+win_trading = True
 boton = True
 running = True
 gmsg = ""
@@ -117,11 +116,18 @@ def reset():
     botoff()
     save_conf(no_prompt=True, save_rt=True)
     sleep(5)
-    #subprocess.call(['python\python', 'bot.py'], shell=True)
-    #system("run.bat")
-    #p = Popen("batch.bat", cwd=r"/run.bat")
-    #p.communicate()
     subprocess.Popen(["run.bat"])
+
+def win_trade_switch():
+    """
+    None -> None
+    Turn win trade on or off
+    """
+    global win_trading
+    win_trading = not win_trading
+    print("\n")
+    print("Win trading is turned {}!".format("ON" if win_trading else "OFF"))
+    print("\n")
 
 def win_trade():
     global bad_play
@@ -773,6 +779,33 @@ def hpen():
                 sleep(0.5)
         sleep(1)
 
+def init_reset():
+    """
+    None -> None
+    Exit the current bot run and
+    start a new one
+    """
+    global running, boton
+
+    running = False
+
+    for _ in range(5):
+        if boton:
+            sleep(1)
+
+    print("\n")
+    for i in range(30):
+        print("Resetting after {} seconds...".format(50 - i), end="\r")
+        if boton:
+            sleep(1)
+        else:
+            return
+
+    print("\nRESETTING\n")
+    reset()
+    logger.info("Resetting")
+    return
+
 def queuer():
     """
     None -> None
@@ -780,16 +813,8 @@ def queuer():
     """
     global boton, running, cmptv, img, hp, switcher
 
-    cmp_prsd = False
-    in_game = False
-
     while boton:
         while running and boton:
-            if cmptv and cmp_prsd and hp > 0:
-                in_game = True
-                cmp_prsd = False
-                logger.info("In game")
-
             if not (img is None):
                 pbtn = detect.play_btn(img)
                 if not (pbtn is None):
@@ -807,31 +832,7 @@ def queuer():
                             click_back()
                             sleep(5)
                             switch_contract()
-                        if cmptv and in_game:
-                            running = False
-                            for _ in range(5):
-                                if boton:
-                                    sleep(1)
-                            print("\n")
-                            for i in range(30):
-                                print("Resetting after {} seconds...".format(50 - i), end="\r")
-                                if boton:
-                                    sleep(1)
-                                else:
-                                    return
-                            print("\nRESETTING\n")
-                            reset()
-                            logger.info("Resetting")
-                            return
 
-
-                        if cmptv:
-                            click(cbtn)
-                            sleep(0.5)
-                            move(CENTER)
-                            sleep(0.5)
-                            cmp_prsd = True
-            for _ in range(6):
                 if boton:
                     sleep(1) 
         sleep(1)
@@ -910,10 +911,13 @@ def bad_play_switch(on):
     and also write to the local config file
     the bad_play status
     """
-    global bad_play
-    bad_play = on
-    print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
-    save_conf(no_prompt=True)
+    global bad_play, win_trading
+    if win_trading:
+        bad_play = on
+        print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
+        save_conf(no_prompt=True)
+    else:
+        print("\n Ignoring win trade request because it was turned off \n")
 
 def inspector():
     """
@@ -923,22 +927,19 @@ def inspector():
     """
     global img, gmode, hp
 
-    lgrt = None
-
     def detect_result():
-        nonlocal lgrt
         global game_played
         vdn = detect.victory_defeat(img)
         if vdn == detect.VICTORY:
             log("Victory detected!")
             bad_play_switch(True)
             game_played = True
-            lgrt = time()
+            init_reset()
         elif vdn == detect.DEFEAT:
             log("Defeat detected!")
             bad_play_switch(False)
             game_played = True
-            lgrt = time()
+            init_reset()
 
     while boton:
         while running and boton:
@@ -948,20 +949,19 @@ def inspector():
 
             gmr   = detect.detect_mode_map(img)
             logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
+
             if not (gmr is None):
                 gmode = gmr
             
             if hp == 0:
                 for _ in range(5):
                     if boton:
-                        if lgrt is None or ((time() - lgrt) > 210):
-                            detect_result()
+                        detect_result()
                         sleep(1)
             else:
                 for _ in range(30):
                     if boton:
-                        if lgrt is None or ((time() - lgrt) > 210):
-                            detect_result()
+                        detect_result()
                         sleep(1)
         sleep(1)
 
@@ -1326,6 +1326,8 @@ def init():
         add_kf("l", switch_switcher)
         # Click 'cancel queue' button
         add_kf("t", cancel_queue)
+        # Turn win trade on/off(off means always trying to win)
+        add_kf("u", win_trade_switch)
 
         listener()
 
