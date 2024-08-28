@@ -832,6 +832,11 @@ def queuer():
                             click_back()
                             sleep(5)
                             switch_contract()
+                        if cmptv:
+                            click(cbtn)
+                            sleep(0.5)
+                            move(CENTER)
+                            sleep(0.5)
 
                 if boton:
                     sleep(1) 
