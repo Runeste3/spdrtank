@@ -31,7 +31,7 @@ win_trading = True
 boton = True
 running = True
 gmsg = ""
-cmptv = True 
+cmptv = False 
 img = None
 switcher = False
 hp, energy = 0, 0 
@@ -1231,19 +1231,21 @@ def run():
 
 def read_conf():
     global HPTHS, ENTHS, mv_far, bad_play, rntm, tmtoran 
-    global switcher
+    global switcher, cmptv, win_trading
 
     try:
         with open('config.json', 'r') as f:
             conf = json.load(f)
 
-        HPTHS    = int(conf['hpt'])
-        ENTHS    = int(conf['ent'])
-        mv_far   = conf['mf'] == "1"
-        bad_play = conf['bp'] == "1"
-        rntm     = float(conf['rntm'])
-        tmtoran  = int(conf['tmtoran'])
-        switcher = conf['swtch'] == "1"
+        HPTHS       = int(conf['hpt'])
+        ENTHS       = int(conf['ent'])
+        mv_far      = conf['mf'] == "1"
+        bad_play    = conf['bp'] == "1"
+        rntm        = float(conf['rntm'])
+        tmtoran     = int(conf['tmtoran'])
+        switcher    = conf['swtch'] == "1"
+        cmptv       = conf['autoq'] == "1"
+        win_trading = conf['wint'] == "1"
     except:
         print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
         save_conf()
@@ -1251,7 +1253,7 @@ def read_conf():
 
 def save_conf(no_prompt=False, save_rt=False):
     global mv_far, HPTHS, ENTHS, running, bad_play, rntm
-    global tmtoran, switcher, strttm
+    global tmtoran, switcher, strttm, win_trading, cmptv
 
     if not no_prompt:
         running = False
@@ -1281,6 +1283,8 @@ def save_conf(no_prompt=False, save_rt=False):
     conf['bp']      = "1" if bad_play else "0"
     conf['rntm']    = "0" if not save_rt else str((time() - strttm) + rntm)
     conf['swtch']   = "1" if switcher else "0"
+    conf['autoq']   = "1" if cmptv else "0"
+    conf['wint']    = "1" if win_trading else "0"
 
     with open('config.json', 'w') as f:
         json.dump(conf, f)
