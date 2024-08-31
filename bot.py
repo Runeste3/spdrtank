@@ -74,6 +74,28 @@ def st_mp():
     """
     return detect.cur_map in detect.static_maps
 
+def cur_log_num():
+    """
+    None -> int[0-10]
+    Return the current log file name in numbers
+    from 0 to 10, depedning on the latest
+    log file being the number before the returned
+    number
+    """
+    with open("cur_log.txt", "r+") as f:
+        cn = int(f.read())
+        if cn == 10:
+            nn = 0
+        else:
+            nn = cn + 1
+
+        f.seek(0)
+        f.write(str(nn))
+        f.truncate()
+
+    return nn
+
+
 def log(m):
     global gmsg
     logger.info(m)
@@ -1293,8 +1315,8 @@ def init():
     global GMREG, CENTER, slfloc, gmode, HPTHS, ENTHS
     global hwnd, win, game_played, rntm
 
-    logfn = len(listdir("logs"))
-    logging.basicConfig(filename="logs/prog_{}.log".format(logfn+1), 
+    logfn = cur_log_num()
+    logging.basicConfig(filename="logs/prog_{}.log".format(logfn), 
                         format='%(asctime)s %(message)s',
                         level=logging.INFO)
     hwnd = find_window("Spider Tanks", exact=True)
@@ -1381,3 +1403,4 @@ if __name__ == "__main__":
     #    img = get_region(GMREG)
     #    sleep(0.3)
     init()
+    #print(cur_log_num())
