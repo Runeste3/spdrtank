@@ -1267,7 +1267,7 @@ def read_conf():
         tmtoran     = int(conf['tmtoran'])
         switcher    = conf['swtch'] == "1"
         cmptv       = conf['autoq'] == "1"
-        win_trading = conf['wint'] == "1"
+        win_trading = conf['wint']  == "1"
     except:
         print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
         save_conf()
