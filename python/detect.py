@@ -466,16 +466,32 @@ def end_game(img):
     return look_for(res, img, 0.9)
 
 
-PLYIM = read_img("src/queue/plybtn.png",   "grey")
-CMPIM = read_img("src/queue/cmptvbtn.png", "grey")
-RCNIM = read_img("src/queue/recon.png",    "grey")
-IDLIM = read_img("src/queue/idle.png",     "grey")
-CNFIM = read_img("src/queue/okbtn.png",    "grey")
-NOIM  = read_img("src/queue/nobtn.png",    "grey")
-RTRIM = read_img("src/queue/rtrbtn.png",   "grey")
-VCTIM = read_img("src/queue/vctbnr.png",   "grey")
-DFTIM = read_img("src/queue/dftbnr.png",   "grey")
-CNCIM = read_img("src/queue/cnclbtn.png",  "grey")
+PLYIM   = read_img("src/queue/plybtn.png",           "grey")
+CMPIM   = read_img("src/queue/cmptvbtn.png",         "grey")
+RCNIM   = read_img("src/queue/recon.png",            "grey")
+IDLIM   = read_img("src/queue/idle.png",             "grey")
+CNFIM   = read_img("src/queue/okbtn.png",            "grey")
+NOIM    = read_img("src/queue/nobtn.png",            "grey")
+RTRIM   = read_img("src/queue/rtrbtn.png",           "grey")
+VCTIM   = read_img("src/queue/vctbnr.png",           "grey")
+DFTIM   = read_img("src/queue/dftbnr.png",           "grey")
+CNCIM   = read_img("src/queue/cnclbtn.png",          "grey")
+CPBTNIM = read_img("src/queue/create_party_btn.png", "grey")
+TMMBRIM = read_img("src/queue/party_member.png",     "grey")
+ADFRIM  = read_img("src/queue/add_friend_btn.png",   "grey")
+FRNDIM  = read_img("src/queue/friend_symbol.png",    "grey")
+INVBIM  = read_img("src/queue/invite_btn.png",       "grey")
+SCLBIM  = read_img("src/queue/social_btn.png",       "grey")
+ACBTIM  = read_img("src/queue/accept_btn.png",       "grey")
+STRBIM  = read_img("src/queue/start_button.png",        "grey")
+
+def start_button(img):
+    """
+    Image -> Point | None
+    Return position of the 'play' button
+    in the given image
+    """
+    return look_for(STRBIM, img, 0.8)
 
 def cancel_btn(img):
     """
@@ -485,6 +501,74 @@ def cancel_btn(img):
     """
     rcncim = recal(CNCIM, ogsz=1920, wonly=True)
     return look_for(rcncim, img, 0.8)
+
+def accept_button(img):
+    """
+    Image -> Point | None
+    Return the position of the accept invite
+    button on screen if found and return
+    None if not found
+    """
+    racinim = recal(ACBTIM, ogsz=1920, wonly=True)
+    return look_for(racinim, img, 0.8)
+
+def socials_button(img):
+    """
+    Image -> Point | None
+    Return social button position
+    on screen and return none if not
+    found
+    """
+    rsclim = recal(SCLBIM, ogsz=1920, wonly=True)
+    return look_for(rsclim, img, 0.8)
+
+def friend_tab(img):
+    """
+    Image -> bool
+    Return True if friend tab is open
+    False if not
+    """
+    radfrim = recal(ADFRIM, ogsz=1920, wonly=True)
+    return not (look_for(radfrim, img, 0.8) is None)
+
+def find_friends(img):
+    """
+    Image -> list(Point)
+    Return the list of friends in the
+    friends tab
+    """
+    rfrnim = recal(FRNDIM, ogsz=1920, wonly=True)
+    return remove_close(find_all(rfrnim, img, 0.8))
+
+def invite_button(img):
+    """
+    Image -> Point | None
+    Return the position of
+    the invite button on screen
+    return None if not found
+    """
+    rinvim = recal(INVBIM, ogsz=1920, wonly=True)
+    return look_for(rinvim, img, 0.8)
+
+def crt_pt_btn(img):
+    """
+    Image -> Point | None
+    Return position of 'create party' button
+    if found, return None if not found
+    """
+    rccpim = recal(CPBTNIM, ogsz=1920, wonly=True)
+    return look_for(rccpim, img, 0.8)
+
+def team_members(img):
+    """
+    Image -> int
+    Return the number of team memebers detected
+    in the given image
+    """
+    rtmim = recal(TMMBRIM, ogsz=1920, wonly=True)
+    ntms = len(remove_close(find_all(rtmim, img, 0.8)))
+    print(ntms)
+    return ntms
 
 def play_btn(img):
     """

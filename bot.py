@@ -1,6 +1,6 @@
 from math import dist
 from time import sleep, time
-from cvbot.capture import get_region
+from cvbot.capture import get_region, screenshot
 from cvbot.keyboard import listener, kbd, press, add_kf
 from cvbot.mouse import click, ms, msbtn, move, scroll
 from threading import Thread, Timer
@@ -23,15 +23,20 @@ logger = logging.getLogger(__name__)
 
 DQSZ = 20
 strttm = time()
+last_invite = None
+last_game = time()
 rntm   = 0
 tmtoran = 3600 * 8 # 8 Hours
 bad_play = False
 mv_far = False
+brhwnd = 0
+hwnd = 0
 win_trading = True
 boton = True
+admin = False
+team_mems = []
 running = True
 gmsg = ""
-cmptv = False 
 img = None
 switcher = False
 hp, energy = 0, 0 
@@ -134,9 +139,40 @@ def switch_switcher():
     print("\n")
     save_conf(no_prompt=True, save_rt=False)
 
-def reset():
+def restart():
+    """
+    None -> None
+    Restart the game process
+    through the browser window
+    """
+    global brhwnd, hwnd
+
+    # Close the game window
+    if hwnd != 0:
+        Window(hwnd).close()
+        sleep(10)
+
+    # Reposition browser window position
+    brwin = Window(brhwnd) 
+    brwin.resize(1600, 800)
+    brwin.repos(0, 0)
+    brwin.focus()
+
+    # Click the play button
+    spos = detect.start_button(screenshot())
+    if not (spos is None):
+        click(spos)
+        sleep(20)
+        reset(hard=True)
+    else:
+        print("\n")
+        print("Play button not found")
+        print("\n")
+
+def reset(hard=False):
     botoff()
-    save_conf(no_prompt=True, save_rt=True)
+    if not hard:
+        save_conf(no_prompt=True, save_rt=True)
     sleep(5)
     subprocess.Popen(["run.bat"])
 
@@ -166,12 +202,12 @@ def pause_run():
     print("Bot {}!".format("Paused" if not running else "Started"))
     print("")
 
-def sr_cmptv():
-    global cmptv
-    cmptv = not cmptv 
-    print("")
-    print("Auto-Queue {}!".format("Off" if not cmptv else "On"))
-    print("")
+#def sr_cmptv():
+#    global cmptv
+#    cmptv = not cmptv 
+#    print("")
+#    print("Auto-Queue {}!".format("Off" if not cmptv else "On"))
+#    print("")
 
 def cancel_queue():
     global img
@@ -828,25 +864,125 @@ def init_reset():
     logger.info("Resetting")
     return
 
+def team_ready():
+    """
+    None -> bool
+    Return True if both memebers
+    are present in the party interface
+    """
+    global img
+    return detect.team_members(img) == 2
+
+def party_button():
+    """
+    None -> Point | None 
+    return position of the 'create party'
+    button
+    """
+    global img
+    return detect.crt_pt_btn(img)
+
+#def create_party(cpbtn):
+#    """
+#    Point -> None
+#    Create party for members to join
+#    """
+#    click(cpbtn)
+
+def open_frnd_tab():
+    """
+    None -> None
+    Open the friends tab
+    """
+    global img
+    spos = detect.socials_button(img)
+    if not (spos is None):
+        click(spos)
+
+def invite_friends():
+    """
+    None -> None
+    Invite all the team members
+    to the party
+    """
+    global boton, img, running
+
+    while running and boton:
+        if detect.friend_tab(img):
+            for fpos in detect.find_friends(img):
+                click(fpos)
+                sleep(1)
+                ipos = detect.invite_button(img)
+                if not (ipos is None):
+                    click(ipos)
+                    sleep(3)
+                    ok_btn()
+                    sleep(2)
+            return
+        else:
+            open_frnd_tab()
+            sleep(0.5)
+
+#def invite_team():
+#    """
+#    None -> None
+#    Invite the two team members
+#    """
+#    global boton, team_mems
+#
+#    #pt_btn = party_button()
+#    #while boton and not (pt_btn is None):
+#    #    create_party(pt_btn)
+#    #    sleep(5)
+#    #    pt_btn = party_button()
+#    # 
+#    # invite_friends()
+#    # sleep(5)
+
+def accept_invite():
+    """
+    None -> None
+    For non admin group memebers
+    accept invite if present
+    """
+    global img
+    abpos = detect.accept_button(img)
+    if not (abpos is None):
+        click(abpos)
+        sleep(2)
+
 def queuer():
     """
     None -> None
     Join competitive queue automatically
     """
-    global boton, running, cmptv, img, hp, switcher
+    global boton, running, img, hp, switcher, admin, last_invite
+    global last_game
 
     while boton:
         while running and boton:
             if not (img is None):
                 pbtn = detect.play_btn(img)
-                if not (pbtn is None):
+                if (time() - last_game) > 600:
+                    restart()
+                    return
+                elif not (pbtn is None):
                     if switcher and bad_play and game_played:
                         switch_contract()
-                    if cmptv:
-                        click(pbtn)
-                        sleep(0.5)
-                        move(CENTER)
-                        sleep(0.5)
+                    if admin:
+                        if team_ready():
+                            log("Team is ready!") 
+                            click(pbtn)
+                            sleep(0.5)
+                            move(CENTER)
+                            sleep(0.5)
+                        else:
+                            log("Inviting team...") 
+                            if last_invite is None or (time() - last_invite) > 20:
+                                invite_friends()
+                                last_invite = time()
+                    else:
+                        accept_invite()
                 else:
                     cbtn = detect.cmptv_btn(img)
                     if not (cbtn is None):
@@ -854,7 +990,7 @@ def queuer():
                             click_back()
                             sleep(5)
                             switch_contract()
-                        if cmptv:
+                        if admin:
                             click(cbtn)
                             sleep(0.5)
                             move(CENTER)
@@ -864,12 +1000,22 @@ def queuer():
                     sleep(1) 
         sleep(1)
 
+def ok_btn():
+    global img
+
+    okbtn = detect.confirm_dialog(img)
+    okfnd = not (okbtn is None)
+    if okfnd:
+        logger.info("Clicking ok button {}".format(okbtn))
+        click(okbtn)
+    return okfnd
+
 def button_handler():
     """
     None -> None
     Handle buttons clicking 
     """
-    global img, boton, running, cmptv
+    global img, boton, running
 
     def leave_btn():
         pos = detect.end_game(img)
@@ -889,13 +1035,6 @@ def button_handler():
             click(ysbtn)
         return rcnfnd
 
-    def ok_btn():
-        okbtn = detect.confirm_dialog(img)
-        okfnd = not (okbtn is None)
-        if okfnd:
-            logger.info("Clicking ok button {}".format(okbtn))
-            click(okbtn)
-        return okfnd
 
     def rtr_btn():
         rtrbtn = detect.retry_button(img)
@@ -960,17 +1099,19 @@ def inspector():
     global img, gmode, hp
 
     def detect_result():
-        global game_played
+        global game_played, last_game
         vdn = detect.victory_defeat(img)
         if vdn == detect.VICTORY:
             log("Victory detected!")
             bad_play_switch(True)
             game_played = True
+            last_game = time()
             return True
         elif vdn == detect.DEFEAT:
             log("Defeat detected!")
             bad_play_switch(False)
             game_played = True
+            last_game = time()
             return True
         return False
 
@@ -1263,7 +1404,7 @@ def run():
 
 def read_conf():
     global HPTHS, ENTHS, mv_far, bad_play, rntm, tmtoran 
-    global switcher, cmptv, win_trading
+    global switcher, win_trading, admin, team_mems
 
     try:
         with open('config.json', 'r') as f:
@@ -1276,8 +1417,9 @@ def read_conf():
         rntm        = float(conf['rntm'])
         tmtoran     = int(conf['tmtoran'])
         switcher    = conf['swtch'] == "1"
-        cmptv       = conf['autoq'] == "1"
         win_trading = conf['wint']  == "1"
+        admin       = conf['admin'] == "1"
+        team_mems   = conf['mems']
     except:
         print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
         save_conf()
@@ -1285,7 +1427,8 @@ def read_conf():
 
 def save_conf(no_prompt=False, save_rt=False):
     global mv_far, HPTHS, ENTHS, running, bad_play, rntm
-    global tmtoran, switcher, strttm, win_trading, cmptv
+    global tmtoran, switcher, strttm, win_trading
+    global admin, team_mems
 
     if not no_prompt:
         running = False
@@ -1302,6 +1445,9 @@ def save_conf(no_prompt=False, save_rt=False):
         HPTHS, ENTHS, tmtoran = int(HPTHS), int(ENTHS), int(float(tmtoran) * 3600)
         mv_far   = input("Follow the closest teammate? Y/N: ").lower() == "n"
         switcher = input("Switch tank/contracts? Y/N: ").lower() == "y"
+        admin    = input("Team leader? Y/N: ").lower() == "y"
+        for tn in range(1, 3):
+            team_mems.append(input("Team member [{}] ID: ".format(tn)))
 
         print("\n")
 
@@ -1315,24 +1461,39 @@ def save_conf(no_prompt=False, save_rt=False):
     conf['bp']      = "1" if bad_play else "0"
     conf['rntm']    = "0" if not save_rt else str((time() - strttm) + rntm)
     conf['swtch']   = "1" if switcher else "0"
-    conf['autoq']   = "1" if cmptv else "0"
     conf['wint']    = "1" if win_trading else "0"
+    conf['admin']   = "1" if admin else "0"
+    conf['mems']    = team_mems
 
     with open('config.json', 'w') as f:
         json.dump(conf, f)
 
 def init():
     global GMREG, CENTER, slfloc, gmode, HPTHS, ENTHS
-    global hwnd, win, game_played, rntm
+    global hwnd, win, game_played, rntm, brhwnd
 
     logfn = cur_log_num()
     logging.basicConfig(filename="logs/prog_{}.log".format(logfn), 
                         format='%(asctime)s %(message)s',
                         level=logging.INFO)
-    hwnd = find_window("Spider Tanks", exact=True)
+    hwnd   = find_window("Spider Tanks", exact=True)
+    brhwnd = find_window("gala games", exact=False)
+    if brhwnd == 0:
+        print("\n")
+        print("[ERROR] Browser window not found!")
+        print("\n")
+        return
+    elif hwnd == 0:
+        print("\n")
+        print("Starting game...")
+        print("\n")
+        restart()
+        return
+
     win = Window(hwnd)
     detect.new_win(win.size)
     win.repos(0, 0)
+    win.focus()
     GMREG  = (
         0, 0, 
         win.size[0] if win.size[0] < detect.MON['width']  else detect.MON['width'], 
@@ -1357,8 +1518,6 @@ def init():
         add_kf("q", botoff)
         # Pause/Un-pause the bot
         add_kf("p", pause_run)
-        # Turn automatic competitive queue joining on/off
-        add_kf("m", sr_cmptv)
         # Edit user preferences
         add_kf("y", save_conf)
         # Switch win trade target for the next game win/lose
@@ -1408,9 +1567,15 @@ if __name__ == "__main__":
     #img = get_region(GMREG)
     #rntm = 0
     #tmtoran = 1000000
-    #Thread(target=switch_contract).start()
-    #while True:
+    #thd = Thread(target=invite_friends)
+    #thd.start()
+    #while thd.is_alive():
     #    img = get_region(GMREG)
     #    sleep(0.3)
+    #print(invite_team())
     init()
     #print(cur_log_num())
+    #hwnd = find_window("gala", exact=False)
+    #win = Window(hwnd)
+    #win.resize(1600, 900)
+    #win.repos(0, 0)
