@@ -920,6 +920,11 @@ def button_handler():
                     rtr_ans = rtr_btn()
                     if not rtr_ans:
                         lv_ans = leave_btn()
+                        if lv_ans:
+                            sleep(5)
+                            if not leave_btn():
+                                init_reset()
+                                return
 
             if rec_ans or ok_ans or rtr_ans or lv_ans:
                 sleep(0.5)
@@ -961,12 +966,13 @@ def inspector():
             log("Victory detected!")
             bad_play_switch(True)
             game_played = True
-            init_reset()
+            return True
         elif vdn == detect.DEFEAT:
             log("Defeat detected!")
             bad_play_switch(False)
             game_played = True
-            init_reset()
+            return True
+        return False
 
     while boton:
         while running and boton:
@@ -983,13 +989,17 @@ def inspector():
             if hp == 0:
                 for _ in range(5):
                     if boton:
-                        detect_result()
-                        sleep(1)
+                        if detect_result():
+                            break
+                        else:
+                            sleep(1)
             else:
                 for _ in range(30):
                     if boton:
-                        detect_result()
-                        sleep(1)
+                        if detect_result():
+                            break
+                        else:
+                            sleep(1)
         sleep(1)
 
 def open_garage():
