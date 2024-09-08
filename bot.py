@@ -34,7 +34,6 @@ hwnd = 0
 win_trading = True
 boton = True
 admin = False
-team_mems = []
 running = True
 gmsg = ""
 img = None
@@ -871,7 +870,7 @@ def team_ready():
     are present in the party interface
     """
     global img
-    return detect.team_members(img) == 2
+    return detect.team_members(img) == 3
 
 def party_button():
     """
@@ -983,6 +982,9 @@ def queuer():
                                 last_invite = time()
                     else:
                         accept_invite()
+                    if game_played:
+                        init_reset()
+                        return
                 else:
                     cbtn = detect.cmptv_btn(img)
                     if not (cbtn is None):
@@ -1059,11 +1061,11 @@ def button_handler():
                     rtr_ans = rtr_btn()
                     if not rtr_ans:
                         lv_ans = leave_btn()
-                        if lv_ans:
-                            sleep(5)
-                            if not leave_btn():
-                                init_reset()
-                                return
+                        #if lv_ans:
+                        #    sleep(5)
+                        #    if not leave_btn():
+                        #        init_reset()
+                        #        return
 
             if rec_ans or ok_ans or rtr_ans or lv_ans:
                 sleep(0.5)
@@ -1321,7 +1323,6 @@ def switch_contract():
                 else:
                     # Switch to top-most
                     switch_cont_top()
-                game_played = False
             exit_garage()
         log("Exitting switcher!")
 
@@ -1404,7 +1405,7 @@ def run():
 
 def read_conf():
     global HPTHS, ENTHS, mv_far, bad_play, rntm, tmtoran 
-    global switcher, win_trading, admin, team_mems
+    global switcher, win_trading, admin
 
     try:
         with open('config.json', 'r') as f:
@@ -1419,7 +1420,6 @@ def read_conf():
         switcher    = conf['swtch'] == "1"
         win_trading = conf['wint']  == "1"
         admin       = conf['admin'] == "1"
-        team_mems   = conf['mems']
     except:
         print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
         save_conf()
@@ -1428,7 +1428,7 @@ def read_conf():
 def save_conf(no_prompt=False, save_rt=False):
     global mv_far, HPTHS, ENTHS, running, bad_play, rntm
     global tmtoran, switcher, strttm, win_trading
-    global admin, team_mems
+    global admin
 
     if not no_prompt:
         running = False
@@ -1446,8 +1446,6 @@ def save_conf(no_prompt=False, save_rt=False):
         mv_far   = input("Follow the closest teammate? Y/N: ").lower() == "n"
         switcher = input("Switch tank/contracts? Y/N: ").lower() == "y"
         admin    = input("Team leader? Y/N: ").lower() == "y"
-        for tn in range(1, 3):
-            team_mems.append(input("Team member [{}] ID: ".format(tn)))
 
         print("\n")
 
@@ -1463,7 +1461,6 @@ def save_conf(no_prompt=False, save_rt=False):
     conf['swtch']   = "1" if switcher else "0"
     conf['wint']    = "1" if win_trading else "0"
     conf['admin']   = "1" if admin else "0"
-    conf['mems']    = team_mems
 
     with open('config.json', 'w') as f:
         json.dump(conf, f)

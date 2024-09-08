@@ -1,5 +1,7 @@
 from win32gui import GetWindowRect as get_window_pnts
 from win32gui import IsWindowVisible, GetWindowText, EnumWindows, MoveWindow, SetForegroundWindow
+from win32gui import PostMessage
+from win32con import WM_CLOSE
 
 
 lhwnd = None
@@ -36,6 +38,13 @@ class Window:
         Focus on the current Window
         """
         SetForegroundWindow(self.hwnd)
+
+    def close(self):
+        """
+        self -> None
+        Close the current window
+        """
+        PostMessage(self.hwnd, WM_CLOSE, 0, 0)
 
     @property
     def tl(self):
