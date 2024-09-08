@@ -962,7 +962,7 @@ def queuer():
         while running and boton:
             if not (img is None):
                 pbtn = detect.play_btn(img)
-                if (time() - last_game) > 600:
+                if (time() - last_game) > 1800:
                     restart()
                     return
                 elif not (pbtn is None):
