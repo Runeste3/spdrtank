@@ -566,9 +566,17 @@ def team_members(img):
     in the given image
     """
     rtmim = recal(TMMBRIM, ogsz=1920, wonly=True)
-    ntms = len(remove_close(find_all(rtmim, img, 0.8)))
-    print(ntms)
-    return ntms
+    ntms = look_for(rtmim, img, 0.8)
+    if not (ntms is None):
+        ratio = (ntms[0] / rltv_szu[0])
+        if ratio > 0.845:
+            return 1
+        elif ratio > 0.8:
+            return 2
+        else:
+            return 3
+    else:
+        return 1
 
 def play_btn(img):
     """
@@ -3485,13 +3493,17 @@ if __name__ == "__main__":
     from matplotlib import cm
     from matplotlib import colors
 
-    #hwnd = find_window("Spider Tanks", exact=True)
-    #win = Window(hwnd)
-    #win.repos(0, 0)
-    #new_win(win.size)
-    #reg = 0, 0, win.size[0], win.size[1]
+    #img = read_img("test.png")
+    hwnd = find_window("Spider Tanks", exact=True)
+    win = Window(hwnd)
+    win.repos(0, 0)
+    new_win(win.size)
+    reg = 0, 0, win.size[0], win.size[1]
     #__record(reg)
     #quit()
+    img = get_region(reg)
+    print(team_members(img))
+    quit()
 
     #img = get_region(reg)
     #loc = contracts(img)
