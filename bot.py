@@ -1506,7 +1506,6 @@ def init():
     detect.init_nr()
 
     read_conf()
-    game_played = rntm != 0
     print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
 
     if 100 > HPTHS > 0 and 100 > ENTHS > 0:
