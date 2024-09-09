@@ -1,6 +1,6 @@
 from math import dist
 from time import sleep, time
-from cvbot.capture import get_region, screenshot
+from cvbot.capture import get_region
 from cvbot.keyboard import listener, kbd, press, add_kf
 from cvbot.mouse import click, ms, msbtn, move, scroll
 from threading import Thread, Timer
@@ -153,12 +153,15 @@ def restart():
 
     # Reposition browser window position
     brwin = Window(brhwnd) 
-    brwin.resize(1600, 800)
+    brwin.resize(1600, 1000)
     brwin.repos(0, 0)
     brwin.focus()
+    sleep(2)
 
     # Click the play button
-    spos = detect.start_button(screenshot())
+    spos = detect.start_button(get_region((0, 0,
+        detect.MON['width'], detect.MON['height']
+    )))
     if not (spos is None):
         click(spos)
         sleep(20)
@@ -870,7 +873,7 @@ def team_ready():
     are present in the party interface
     """
     global img
-    return detect.team_members(img) == 3
+    return detect.team_members(img) == 1
 
 def party_button():
     """
@@ -962,12 +965,16 @@ def queuer():
         while running and boton:
             if not (img is None):
                 pbtn = detect.play_btn(img)
-                if (time() - last_game) > 1800:
+                if (time() - last_game) > 600:
                     restart()
                     return
                 elif not (pbtn is None):
+                    log("Play button detected!")
                     if switcher and bad_play and game_played:
                         switch_contract()
+                    if game_played:
+                        init_reset()
+                        return
                     if admin:
                         if team_ready():
                             log("Team is ready!") 
@@ -981,10 +988,8 @@ def queuer():
                                 invite_friends()
                                 last_invite = time()
                     else:
+                        log("Waiting for invite...")
                         accept_invite()
-                    if game_played:
-                        init_reset()
-                        return
                 else:
                     cbtn = detect.cmptv_btn(img)
                     if not (cbtn is None):
@@ -1098,7 +1103,7 @@ def inspector():
     Get information about the current
     game mode, map and result
     """
-    global img, gmode, hp
+    global img, gmode, hp, last_game
 
     def detect_result():
         global game_played, last_game
@@ -1117,6 +1122,11 @@ def inspector():
             return True
         return False
 
+    def too_soon():
+        global last_game
+
+        return (time() - last_game) < 120
+
     while boton:
         while running and boton:
             if img is None:
@@ -1128,20 +1138,23 @@ def inspector():
 
             if not (gmr is None):
                 gmode = gmr
+                last_game = time()
             
             if hp == 0:
                 for _ in range(5):
                     if boton:
-                        if detect_result():
+                        if too_soon():
                             break
                         else:
+                            detect_result()
                             sleep(1)
             else:
                 for _ in range(30):
                     if boton:
-                        if detect_result():
+                        if too_soon():
                             break
                         else:
+                            detect_result()
                             sleep(1)
         sleep(1)
 
@@ -1472,6 +1485,7 @@ def init():
     logfn = cur_log_num()
     logging.basicConfig(filename="logs/prog_{}.log".format(logfn), 
                         format='%(asctime)s %(message)s',
+                        filemode='w',
                         level=logging.INFO)
     hwnd   = find_window("Spider Tanks", exact=True)
     brhwnd = find_window("gala games", exact=False)
@@ -1555,12 +1569,15 @@ if __name__ == "__main__":
     #    win.size[0] if win.size[0] < detect.MON['width']  else detect.MON['width'], 
     #    win.size[1] if win.size[1] < detect.MON['height'] else detect.MON['height']
     #)
+    #img = get_region(GMREG)
     #CENTER = (GMREG[2] // 2,
     #          GMREG[3] // 2)
     #slfloc = CENTER
     #bad_play = True
     #game_played = True
-    #img = get_region(GMREG)
+    #brhwnd = find_window("gala games", exact=False)
+    #print(brhwnd)
+    #restart()
     #rntm = 0
     #tmtoran = 1000000
     #thd = Thread(target=invite_friends)
