@@ -29,6 +29,7 @@ rntm   = 0
 tmtoran = 3600 * 8 # 8 Hours
 bad_play = False
 mv_far = False
+cmptv = False
 brhwnd = 0
 hwnd = 0
 win_trading = True
@@ -204,12 +205,12 @@ def pause_run():
     print("Bot {}!".format("Paused" if not running else "Started"))
     print("")
 
-#def sr_cmptv():
-#    global cmptv
-#    cmptv = not cmptv 
-#    print("")
-#    print("Auto-Queue {}!".format("Off" if not cmptv else "On"))
-#    print("")
+def sr_cmptv():
+    global cmptv
+    cmptv = not cmptv 
+    print("")
+    print("Auto-Queue {}!".format("Off" if not cmptv else "On"))
+    print("")
 
 def cancel_queue():
     global img
@@ -959,49 +960,70 @@ def queuer():
     Join competitive queue automatically
     """
     global boton, running, img, hp, switcher, admin, last_invite
-    global last_game
+    global last_game, cmptv
 
     while boton:
         while running and boton:
             if not (img is None):
-                pbtn = detect.play_btn(img)
-                if (time() - last_game) > 600:
-                    restart()
-                    return
-                elif not (pbtn is None):
-                    log("Play button detected!")
-                    if switcher and bad_play and game_played:
-                        switch_contract()
-                    if game_played:
-                        init_reset()
-                        return
-                    if admin:
-                        if team_ready():
-                            log("Team is ready!") 
-                            click(pbtn)
-                            sleep(0.5)
-                            move(CENTER)
-                            sleep(0.5)
-                        else:
-                            log("Inviting team...") 
-                            if last_invite is None or (time() - last_invite) > 20:
-                                invite_friends()
-                                last_invite = time()
-                    else:
-                        log("Waiting for invite...")
-                        accept_invite()
-                else:
-                    cbtn = detect.cmptv_btn(img)
-                    if not (cbtn is None):
+                if cmptv:
+                    pbtn = detect.play_btn(img)
+                    if not (pbtn is None):
                         if switcher and bad_play and game_played:
-                            click_back()
-                            sleep(5)
                             switch_contract()
-                        if admin:
+                        click(pbtn)
+                        sleep(0.5)
+                        move(CENTER)
+                        sleep(0.5)
+                    else:
+                        cbtn = detect.cmptv_btn(img)
+                        if not (cbtn is None):
+                            if switcher and bad_play and game_played:
+                                click_back()
+                                sleep(5)
+                                switch_contract()
                             click(cbtn)
                             sleep(0.5)
                             move(CENTER)
                             sleep(0.5)
+                else:
+                    pbtn = detect.play_btn(img)
+                    if admin and ((time() - last_game) > 600):
+                        restart()
+                        return
+                    elif not (pbtn is None):
+                        log("Play button detected!")
+                        if switcher and bad_play and game_played:
+                            switch_contract()
+                        if game_played:
+                            init_reset()
+                            return
+                        if admin:
+                            if team_ready():
+                                log("Team is ready!") 
+                                click(pbtn)
+                                sleep(0.5)
+                                move(CENTER)
+                                sleep(0.5)
+                            else:
+                                log("Inviting team...") 
+                                if last_invite is None or (time() - last_invite) > 20:
+                                    invite_friends()
+                                    last_invite = time()
+                        else:
+                            log("Waiting for invite...")
+                            accept_invite()
+                    else:
+                        cbtn = detect.cmptv_btn(img)
+                        if not (cbtn is None):
+                            if switcher and bad_play and game_played:
+                                click_back()
+                                sleep(5)
+                                switch_contract()
+                            elif admin:
+                                click(cbtn)
+                                sleep(0.5)
+                                move(CENTER)
+                                sleep(0.5)
 
                 if boton:
                     sleep(1) 
@@ -1538,6 +1560,8 @@ def init():
         add_kf("t", cancel_queue)
         # Turn win trade on/off(off means always trying to win)
         add_kf("u", win_trade_switch)
+        # Turn auto-queue on/off
+        add_kf("m", sr_cmptv)
 
         listener()
 
