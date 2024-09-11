@@ -163,10 +163,11 @@ def restart():
     spos = detect.start_button(get_region((0, 0,
         detect.MON['width'], detect.MON['height']
     )))
+
     if not (spos is None):
         click(spos)
         sleep(20)
-        reset(hard=True)
+        reset(hard=hwnd==0)
     else:
         print("\n")
         print("Play button not found")
@@ -954,13 +955,22 @@ def accept_invite():
         click(abpos)
         sleep(2)
 
+def game_open():
+    """
+    None -> bool
+    Return True if the game window is open
+    """
+    global hwnd
+    hwnd = find_window("Spider Tanks", exact=True)
+    return hwnd != 0
+
 def queuer():
     """
     None -> None
     Join competitive queue automatically
     """
     global boton, running, img, hp, switcher, admin, last_invite
-    global last_game, cmptv
+    global last_game, cmptv, switched 
 
     while boton:
         while running and boton:
@@ -987,14 +997,13 @@ def queuer():
                             sleep(0.5)
                 else:
                     pbtn = detect.play_btn(img)
-                    if admin and ((time() - last_game) > 600):
+                    if not game_open() or (admin and ((time() - last_game) > 600)):
                         restart()
                         return
                     elif not (pbtn is None):
-                        log("Play button detected!")
                         if switcher and bad_play and game_played:
                             switch_contract()
-                        if game_played:
+                        if game_played and switched:
                             init_reset()
                             return
                         if admin:
@@ -1333,6 +1342,7 @@ def select_contract(cp):
     return False
 
 game_played = False
+switched = False
 
 def switch_contract():
     """
@@ -1341,7 +1351,7 @@ def switch_contract():
     or to the top-most contact
     """
     global bad_play, img, rntm, tmtoran, game_played
-    global strttm
+    global strttm, switched
 
     if bad_play and game_played:
         log("Switcher engaged, trying to open garage!")
@@ -1358,6 +1368,7 @@ def switch_contract():
                 else:
                     # Switch to top-most
                     switch_cont_top()
+                switched = True
             exit_garage()
         log("Exitting switcher!")
 
