@@ -3,13 +3,20 @@ import numpy as np
 import onnxruntime as ort
 import math
 from cvbot.images import Image
-from ultralytics import YOLO
 
 
 classifiers = {}
+YOLO = None
+
+def init_models(low_res):
+    global YOLO
+    if not low_res:
+        from ultralytics import YOLO as im_yolo
+        YOLO = im_yolo
+
 
 class Model:
-    def __init__(self, path, classes=[], pred_type="box") -> None:
+    def __init__(self, path, classes=[], pred_type="mask") -> None:
         if path.endswith("onnx"):
             self.pred_type = pred_type
             self.session = ort.InferenceSession(path, 
@@ -117,7 +124,7 @@ class Model:
 
         outputs = np.squeeze(outputs[0]).T
         scores = np.max(outputs[:, 4:4+self.nc], axis=1)
-        outputs = outputs[scores > 0.6, :]
+        outputs = outputs[scores > thresh, :]
 
         scores  = scores[scores > thresh]
         boxes   = outputs[:, :self.nc+4]
@@ -143,7 +150,7 @@ class Model:
 
             scr = scores[i]
             name = self.classes[ids[i]]
-            result = ((mask, (x1, x2, y1, y2)), scr, name)
+            result = ((mask, (x1, y1, x2, y2)), scr, name)
             results.append(result)
 
         return results

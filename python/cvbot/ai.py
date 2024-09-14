@@ -1,13 +1,10 @@
-from easyocr import Reader
-#import pytesseract
 from cv2 import cvtColor, COLOR_BGR2RGB
 from os import getcwd 
 from os.path import join
 
-#pytesseract.pytesseract.tesseract_cmd = join(getcwd(), 'tesseract/tesseract.exe')
 reader = None
 
-def init_ocr(langs, model_path=None):
+def init_ocr(langs, low_res=False, model_path=None):
     """
     list(str) -> None
     Initiate easyocr NN model for future detection
@@ -15,8 +12,24 @@ def init_ocr(langs, model_path=None):
     global reader
 
     if reader is None:
-        reader = Reader(langs, gpu=True, verbose=False, 
-                        model_storage_directory=model_path)
+        if low_res:
+            import pytesseract
+            pytesseract.pytesseract.tesseract_cmd = join(getcwd(), 'tesseract/tesseract.exe')
+            def reader(img, allowlist, join_wrd):
+                res = pytesseract.image_to_string(cvtColor(img.img, COLOR_BGR2RGB),
+                                                lang='eng',
+                                                config='-c tessedit_char_whitelist=' + allowlist)
+                return res
+        else:
+            from easyocr import Reader
+            loc_reader = Reader(langs, gpu=True, verbose=False, 
+                            model_storage_directory=model_path)
+            def reader(img, allowlist, join_wrd):
+                nonlocal loc_reader
+                if join_wrd: 
+                    return "".join(loc_reader.readtext(img.img, detail=0, allowlist=allowlist))
+                else: 
+                    return loc_reader.readtext(img.img, detail=0, allowlist=allowlist)
     else:
         print("\nOCR model is already initiated!")
 
@@ -35,7 +48,4 @@ def read(img, allowlist="", join_wrd=True):
     if reader is None:
         print("\nOCR model was not initiated, please call 'init_ocr' before calling 'read' function")
     else:
-        if join_wrd:
-            return "".join(reader.readtext(img.img, detail=0, allowlist=allowlist))
-        else:
-            return reader.readtext(img.img, detail=0, allowlist=allowlist)
+        return reader(img, allowlist, join_wrd)

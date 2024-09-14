@@ -1457,15 +1457,16 @@ def read_conf():
         with open('config.json', 'r') as f:
             conf = json.load(f)
 
-        HPTHS       = int(conf['hpt'])
-        ENTHS       = int(conf['ent'])
-        mv_far      = conf['mf'] == "1"
-        bad_play    = conf['bp'] == "1"
-        rntm        = float(conf['rntm'])
-        tmtoran     = int(conf['tmtoran'])
-        switcher    = conf['swtch'] == "1"
-        win_trading = conf['wint']  == "1"
-        admin       = conf['admin'] == "1"
+        HPTHS          = int(conf['hpt'])
+        ENTHS          = int(conf['ent'])
+        mv_far         = conf['mf'] == "1"
+        bad_play       = conf['bp'] == "1"
+        rntm           = float(conf['rntm'])
+        tmtoran        = int(conf['tmtoran'])
+        switcher       = conf['swtch'] == "1"
+        win_trading    = conf['wint']  == "1"
+        admin          = conf['admin'] == "1"
+        detect.low_res = conf['low_res'] == "1"
     except:
         print("COULDN'T FIND THE BOT PREFERENCES, PLEASE SET IT AGAIN")
         save_conf()
@@ -1476,6 +1477,8 @@ def save_conf(no_prompt=False, save_rt=False):
     global tmtoran, switcher, strttm, win_trading
     global admin
 
+    low_res_chngd = False
+    low_res = detect.low_res
     if not no_prompt:
         running = False
 
@@ -1492,24 +1495,31 @@ def save_conf(no_prompt=False, save_rt=False):
         mv_far   = input("Follow the closest teammate? Y/N: ").lower() == "n"
         switcher = input("Switch tank/contracts? Y/N: ").lower() == "y"
         admin    = input("Team leader? Y/N: ").lower() == "y"
+        low_res  = input("Low resources? Y/N: ").lower() == "y"
 
         print("\n")
+        low_res_chngd = low_res != detect.low_res
 
-        running = True
+        if not low_res_chngd:
+            running = True
 
     conf = {}
     conf['hpt']     = str(HPTHS)
     conf['ent']     = str(ENTHS)
     conf['tmtoran'] = str(tmtoran)
-    conf['mf']      = "1" if mv_far else "0"
-    conf['bp']      = "1" if bad_play else "0"
+    conf['mf']      = "1" if mv_far      else "0"
+    conf['bp']      = "1" if bad_play    else "0"
     conf['rntm']    = "0" if not save_rt else str((time() - strttm) + rntm)
-    conf['swtch']   = "1" if switcher else "0"
+    conf['swtch']   = "1" if switcher    else "0"
     conf['wint']    = "1" if win_trading else "0"
-    conf['admin']   = "1" if admin else "0"
+    conf['admin']   = "1" if admin       else "0"
+    conf['low_res'] = "1" if low_res     else "0"
 
     with open('config.json', 'w') as f:
         json.dump(conf, f)
+
+    if low_res_chngd:
+        reset(hard=True)
 
 def init():
     global GMREG, CENTER, slfloc, gmode, HPTHS, ENTHS
@@ -1550,9 +1560,10 @@ def init():
 
     logger.info("Starting bot")
     print("\n Initiating OCR... \n")
-    detect.init_nr()
 
     read_conf()
+    detect.init_nr()
+    print("\n {} mode \n".format("Low resources" if detect.low_res else "Normal"))
     print("\n Trying to {} next match! \n".format("Win" if not bad_play else "Lose"))
 
     if 100 > HPTHS > 0 and 100 > ENTHS > 0:
@@ -1613,9 +1624,9 @@ if __name__ == "__main__":
     #brhwnd = find_window("gala games", exact=False)
     #print(brhwnd)
     #restart()
-    #rntm = 0
-    #tmtoran = 1000000
-    #thd = Thread(target=invite_friends)
+    #rntm = strttm
+    #tmtoran = 1
+    #thd = Thread(target=switch_contract)
     #thd.start()
     #while thd.is_alive():
     #    img = get_region(GMREG)

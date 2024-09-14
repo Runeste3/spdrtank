@@ -8,7 +8,7 @@ from cvbot.match import look_for, sift_find, mse, find_all, remove_close
 from cvbot.io import read_img, save_img
 from cvbot.images import Image
 from cvbot.ai import read, init_ocr
-from cvbot.yolo.ai import Model
+from cvbot.yolo.ai import Model, init_models
 from cvbot._screen import MON
 from thefuzz import fuzz
 from math import prod, dist, atan, pi
@@ -25,6 +25,7 @@ chk_model = None
 map_model = None
 map_img   = None
 game_mode = None
+low_res   = False
 supported_maps = ("SAHA", "SHSH", "DRCA", "JUTE", "FRRE", 
                   "FOCI", "STST", "ARBA")
 static_maps    = ("JUTE", "DECA", "FRRE", "FOCI", "STST", 
@@ -802,7 +803,9 @@ def init_nr():
     Initiate the OCR for reading
     english words on scren
     """
-    init_ocr(["en", "de"])
+    global low_res
+    init_ocr(["en", "de"], low_res)
+    init_models(low_res)
 
 def crop_mode(img):
     """
@@ -1222,7 +1225,10 @@ def lf_mask_detail(lfmap):
 
     for ((mask, _), _, name) in loob:
         if name.startswith("w"):
-            lfmap = cv.drawContours(lfmap, [mask], 0, (255, 255, 255), -1)
+            try:
+                lfmap = cv.drawContours(lfmap, [mask], 0, (255, 255, 255), -1)
+            except:
+                lfmap = lfmap
             #lfmap[y1:y2, x1:x2][mask] = 255
 
     return lfmap
@@ -1772,8 +1778,9 @@ def load_map_model(pm):
     Load the map objects detection model
     for the current map
     """
-    global map_model, map_img
+    global map_model, map_img, low_res
 
+    end = "onnx" if low_res else "pt"
     if pm == "DECA":
         map_img   = cv.imread("src/maps/desert.png", 0)
         map_model = Model("src/models/desert.onnx", ["House-1",
@@ -1796,7 +1803,7 @@ def load_map_model(pm):
                                             "Obstacle-5",
                                             "Obstacle-6",
                                             "Obstacle-7",
-                                            "Obstacle-8"])
+                                            "Obstacle-8"], "box")
     elif pm == "VAVA":
         map_model = Model("src/models/vault.onnx", ["Wall-1",
                                                     "Wall-2",
@@ -1825,35 +1832,49 @@ def load_map_model(pm):
                                                     "Wall-18",
                                                     "Pit-8",
                                                     "Wall-19",
-                                                    ])
+                                                    ], "box")
         map_img = cv.imread("src/maps/vault.png", 0)
     elif pm == "SAHA":
-        map_model = Model("src/models/haven.pt")#, "mask", ['p1', 'p2', 'p3',
-                                                #            'p4', 'w1', 'w2',
-                                                #            'w3', 'w4', 'w5',
-                                                #            'w6', 'w7', 'w8',
-                                                #            'w9'])
+        map_model = Model("src/models/haven." + end, ['p1', 'p2', 'p3',
+                                                      'w1', 'w2', 'w3',
+                                                      'w4', 'w5', 'w6',
+                                                      'p4', 'w7', 'w8',
+                                                      'w9'])
         map_img = cv.imread("src/maps/haven.png", 0)
     elif pm == "SHSH":
-        map_model = Model("src/models/shrine.pt")
+        map_model = Model("src/models/shrine." + end, [
+            'p1', 'p2', 'p3', 'w1', 'w2', 'w3'
+        ])
         map_img   = cv.imread("src/maps/shrine.png", 0)
     elif pm == "DRCA":
-        map_model = Model("src/models/dragon.pt")
+        map_model = Model("src/models/dragon." + end,
+        ['p2', 'w1', 'w2', 'p1', 'p3', 'p4', 'p5', 'w3', 'w4', 'w5', 'w6', 'w7', 'w8', 'w9']
+        )
         map_img   = cv.imread("src/maps/dragon.png", 0)
     elif pm == "JUTE":
-        map_model = Model("src/models/temple.pt")
+        map_model = Model("src/models/temple." + end, 
+        ['pit-1', 'pit-2', 'pit-3', 'pit-4', 'wall-1', 'wall-2', 'pit-5', 'pit-6', 'wall-3', 'pit-7']
+                          )
         map_img   = cv.imread("src/maps/temple.png", 0)
     elif pm == "FRRE":
-        map_model = Model("src/models/research.pt")
+        map_model = Model("src/models/research." + end,
+        ['wall-1', 'wall-2', 'wall-3', 'wall-4', 'wall-5', 'wall-6', 'wall-7', 'wall-8', 'wall-9', 'wall-10', 'wall-11', 'pit-1', 'pit-2', 'pit-3', 'pit-4'] 
+                          )
         map_img   = cv.imread("src/maps/research.png", 0)
     elif pm == "FOCI":
-        map_model = Model("src/models/forsaken.pt")
+        map_model = Model("src/models/forsaken." + end, 
+        ['wall-1', 'wall-2', 'wall-3', 'wall-4', 'wall-5', 'wall-6', 'wall-7', 'wall-8', 'wall-9', 'wall-10', 'wall-11'] 
+                          )
         map_img   = cv.imread("src/maps/forsaken.png", 0)
     elif pm == "STST":
-        map_model = Model("src/models/stronghold.pt")
+        map_model = Model("src/models/stronghold." + end,
+        ['wall-1', 'wall-2', 'wall-3', 'wall-4', 'wall-5', 'wall-6', 'wall-7', 'wall-8', 'wall-9', 'wall-10', 'wall-11', 'wall-12', 'wall-13', 'pit-1', 'pit-2', 'pit-3', 'pit-4'] 
+                          )
         map_img   = cv.imread("src/maps/stronghold.png", 0)
     elif pm == "ARBA":
-        map_model = Model("src/models/base.pt")
+        map_model = Model("src/models/base." + end,
+         ['wall-1', 'wall-2', 'wall-3', 'wall-4', 'wall-5', 'pit-1']
+                          )
         map_img   = cv.imread("src/maps/base.png", 0)
 
 def map_objs(img):
@@ -3494,16 +3515,16 @@ if __name__ == "__main__":
     from matplotlib import colors
 
     #img = read_img("test.png")
-    hwnd = find_window("Spider Tanks", exact=True)
-    win = Window(hwnd)
-    win.repos(0, 0)
-    new_win(win.size)
-    reg = 0, 0, win.size[0], win.size[1]
-    #__record(reg)
+    #hwnd = find_window("Spider Tanks", exact=True)
+    #win = Window(hwnd)
+    #win.repos(0, 0)
+    #new_win(win.size)
+    #reg = 0, 0, win.size[0], win.size[1]
+    ##__record(reg)
+    ##quit()
+    #img = get_region(reg)
+    #print(team_members(img))
     #quit()
-    img = get_region(reg)
-    print(team_members(img))
-    quit()
 
     #img = get_region(reg)
     #loc = contracts(img)
@@ -3551,7 +3572,8 @@ if __name__ == "__main__":
     #reg = 0, 0, wnsz[0], wnsz[1]
     #get_region = lambda reg: read_img("D:/dev/spdrtank/__test/_cc/7878.png")
 
-    pm = "DRCA"
+    pm = "VAVA"
+    low_res = False 
     cur_map = pm
     load_map_model(pm)
     #load_chick_model()
@@ -3589,7 +3611,7 @@ if __name__ == "__main__":
                                  cv.FONT_HERSHEY_COMPLEX, 
                                  1, (0, 255, 0), 3)
         #chks = locate_chicks(img)
-        tmim = cv.imread("src/maps/dragon.png", 0)
+        tmim = cv.imread("src/maps/vault.png", 0)
         #for chk in chks:
         #    cmp = map_point(chk)
         #    tmim[cmp[1], cmp[0]] = 125
