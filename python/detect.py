@@ -2453,13 +2453,16 @@ objects_mps = {
 }
 
 def pred_pos(osp, name, psp):
-    dapos = objects_mps[cur_map]
-    oap = dapos[name] 
-    pax = (oap[0] - round((osp[0] - psp[0]) / 50) if osp[0] > psp[0] else
-           oap[0] + round((psp[0] - osp[0]) / 50))
-    pay = (oap[1] - round((osp[1] - psp[1]) / 50) if osp[1] > psp[1] else
-           oap[1] + round((psp[1] - osp[1]) / 50))
-    return pax, pay
+    try:
+        dapos = objects_mps[cur_map]
+        oap = dapos[name] 
+        pax = (oap[0] - round((osp[0] - psp[0]) / 50) if osp[0] > psp[0] else
+            oap[0] + round((psp[0] - osp[0]) / 50))
+        pay = (oap[1] - round((osp[1] - psp[1]) / 50) if osp[1] > psp[1] else
+            oap[1] + round((psp[1] - osp[1]) / 50))
+        return pax, pay
+    except:
+        return None
 
 #def jute_mp(p):
 #    """
@@ -2613,6 +2616,8 @@ def map_point(p):
         pcd    = dist(spos, gc) ** 2
         weight = round(mxd / (pcd + 1))
         pap    = pred_pos(spos, name, p)
+        if pap is None:
+            return pap
         lppos.append((pap, weight))
 
     tp = 0

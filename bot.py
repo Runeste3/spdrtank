@@ -9,7 +9,6 @@ from collections import deque
 from datetime import datetime
 from cvbot.windows import find_window, Window
 from os import get_terminal_size as gts
-from os import listdir
 import detect
 import json
 import subprocess
@@ -21,33 +20,33 @@ import traceback
 # Logging
 logger = logging.getLogger(__name__)
 
-DQSZ = 20
-strttm = time()
+DQSZ        = 20
+strttm      = time()
 last_invite = None
-last_game = time()
-rntm   = 0
-tmtoran = 3600 * 8 # 8 Hours
-bad_play = False
-mv_far = False
-cmptv = False
-brhwnd = 0
-hwnd = 0
+last_game   = time()
+rntm        = 0
+tmtoran     = 3600 * 8 # 8 Hours
+bad_play    = False
+mv_far      = False
+cmptv       = False
+brhwnd      = 0
+hwnd        = 0
 win_trading = True
-boton = True
-admin = False
-running = True
-gmsg = ""
-img = None
-switcher = False
-hp, energy = 0, 0 
-xyd = [0, 0]
-atkmode = 1
-loals = []
-loenm = []
-loob = []
-laht = None
-atarget = None
-gmp_to_gmn = {
+boton       = True
+admin       = False
+running     = True
+gmsg        = ""
+img         = None
+switcher    = False
+hp, energy  = 0, 0 
+xyd         = [0, 0]
+atkmode     = 1
+loals       = []
+loenm       = []
+loob        = []
+laht        = None
+atarget     = None
+gmp_to_gmn  = {
     "":"Unknown",
     "SAHA":"Safe Haven",
     "JUTE":"Jungle Temple",
