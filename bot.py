@@ -144,19 +144,24 @@ def restart():
     Restart the game process
     through the browser window
     """
-    global brhwnd, hwnd
+    global brhwnd, hwnd, GMREG, img
     # Reposition browser window position
     try:
         brwin = Window(brhwnd) 
         brwin.resize(1600, 1000)
         brwin.repos(0, 0)
         brwin.focus()
+
+        # Override the game region and change it
+        # to the browser region
+        olgmreg = GMREG
+        GMREG = (0, 0, 1600, 1000)
         sleep(2)
 
         # Click the play button
-        spos = detect.start_button(get_region((0, 0,
-            detect.MON['width'], detect.MON['height']
-        )))
+        spos = detect.start_button(img)
+
+        GMREG = olgmreg
     except:
         return
 
