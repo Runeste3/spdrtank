@@ -1171,7 +1171,12 @@ def inspector():
                 sleep(1)
                 continue
 
-            gmr   = detect.detect_mode_map(img)
+            try:
+                gmr   = detect.detect_mode_map(img)
+            except Exception as e:
+                gmr   = None
+                log("Exception at inspector! {}".format(e))
+
             logger.info("Detected game mode/map {} {}".format(gmr, detect.cur_map))
 
             if not (gmr is None):

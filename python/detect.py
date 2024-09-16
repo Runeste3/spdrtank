@@ -1741,7 +1741,7 @@ def load_chick_model():
     global chk_model, cur_map, map_img, static_maps, added_brls
     if chk_model is None:
         print("\n Loading chicks model... \n")
-        chk_model = Model("src/models/chick.onnx", ["chick",])
+        chk_model = Model("src/models/chick.onnx", ["chick",], "box")
         if cur_map in static_maps:
             add_barrels(cur_map)
             added_brls = True, cur_map
