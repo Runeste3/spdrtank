@@ -145,25 +145,29 @@ def restart():
     through the browser window
     """
     global brhwnd, hwnd
-
-    # Close the game window
-    if hwnd != 0:
-        Window(hwnd).close()
-        sleep(10)
-
     # Reposition browser window position
-    brwin = Window(brhwnd) 
-    brwin.resize(1600, 1000)
-    brwin.repos(0, 0)
-    brwin.focus()
-    sleep(2)
+    try:
+        brwin = Window(brhwnd) 
+        brwin.resize(1600, 1000)
+        brwin.repos(0, 0)
+        brwin.focus()
+        sleep(2)
 
-    # Click the play button
-    spos = detect.start_button(get_region((0, 0,
-        detect.MON['width'], detect.MON['height']
-    )))
+        # Click the play button
+        spos = detect.start_button(get_region((0, 0,
+            detect.MON['width'], detect.MON['height']
+        )))
+    except:
+        return
 
     if not (spos is None):
+        # Close the game window
+        try:
+            if hwnd != 0:
+                Window(hwnd).close()
+                sleep(10)
+        except:
+            return
         click(spos)
         sleep(20)
         reset(hard=hwnd==0)
@@ -998,7 +1002,6 @@ def queuer():
                     pbtn = detect.play_btn(img)
                     if not game_open() or (admin and ((time() - last_game) > 600)):
                         restart()
-                        return
                     elif not (pbtn is None):
                         if switcher and bad_play and game_played:
                             switch_contract()
@@ -1265,7 +1268,7 @@ def exit_garage():
             click(bbtn)
             sleep(1)
 
-def switch_cont_random():
+def switch_cont_random(noloop=False):
     """
     None -> None
     ASSUMES CONTRACTS MENU IS OPEN
@@ -1274,34 +1277,24 @@ def switch_cont_random():
     global img
 
     pos = detect.contracts_btn(img)
+    for _ in range(5):
+        if not (pos is None):
+            log("Contract button found!")
+            break
+        else:
+            sleep(1)
+            pos = detect.contracts_btn(img)
+    else:
+        log("Contract button not found, trying top-most switching...")
+        if not noloop:
+            switch_cont_top(noloop=True)
+        return
+
     rcbtn = pos[0], pos[1] + detect.recal(120, ogsz=1600, wonly=True)
     click(rcbtn)
     sleep(0.5)
-    # ----- Random contract Selection ----------------------------------
-    #
-    #locp = detect.contracts(img)
-    #if locp:
-    #    if len(locp) >= 3:
-    #        # random scroll
-    #        move(CENTER)
-    #        sleep(0.5)
-    #        scramt = choice((5, 10, 15, 20, 25, 30, 35, 40, 45, 50))
-    #        updn   = choice((True, False))
-    #        print(scramt, updn)
-    #        for _ in range(scramt):
-    #            scroll(100, updn, True)
-    #            sleep(0.1)
-    #        sleep(1)
 
-    #    # random select of the availabl contracts
-    #    locp = detect.contracts(img)
-    #    for _ in range(5):
-    #        cp = choice(locp)
-    #        if select_contract(cp):
-    #            return
-    #------------------------------------------------------------------
-
-def switch_cont_top():
+def switch_cont_top(noloop=False):
     """
     None -> None
     ASSUMES CONTRACTS MENU IS OPEN
@@ -1319,7 +1312,11 @@ def switch_cont_top():
     if locp:
         for cp in locp:
             if select_contract(cp):
+                log("Selected top-most contract")
                 return
+    log("Couldn't select top-most contract, going random...")
+    if not noloop:
+        switch_cont_random(noloop=True)
 
 def select_contract(cp):
     """
@@ -1538,7 +1535,7 @@ def init():
         return
     elif hwnd == 0:
         print("\n")
-        print("Starting game...")
+        print("Game window not found, Starting game...")
         print("\n")
         restart()
         return
